@@ -3,6 +3,7 @@ Camera API — 摄像头接口
 GET  /api/camera/stream  — MJPEG 视频流
 POST /api/camera/capture — 拍照分析
 """
+import asyncio
 import logging
 import time
 from pathlib import Path
@@ -15,30 +16,42 @@ router = APIRouter()
 logger = logging.getLogger("SmartHome")
 
 
+def _open_camera():
+    """同步：打开摄像头（阻塞操作，需在线程中调用）"""
+    import cv2
+    cap = cv2.VideoCapture(0)
+    if not cap.isOpened():
+        cap.release()
+        return None
+    return cap
+
+
+def _generate_frames(cap):
+    """同步帧生成器（在 StreamingResponse 的线程池中运行）"""
+    import cv2
+    try:
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+            _, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+            yield (b"--frame\r\n"
+                   b"Content-Type: image/jpeg\r\n\r\n" +
+                   buf.tobytes() + b"\r\n")
+    finally:
+        cap.release()
+
+
 @router.get("/camera/stream")
 async def camera_stream():
     """MJPEG 视频流"""
     try:
-        import cv2
-        cap = cv2.VideoCapture(0)
-        if not cap.isOpened():
+        cap = await asyncio.to_thread(_open_camera)
+        if cap is None:
             return {"success": False, "error": "摄像头未连接"}
 
-        def generate():
-            try:
-                while True:
-                    ret, frame = cap.read()
-                    if not ret:
-                        break
-                    _, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
-                    yield (b"--frame\r\n"
-                           b"Content-Type: image/jpeg\r\n\r\n" +
-                           buf.tobytes() + b"\r\n")
-            finally:
-                cap.release()
-
         return StreamingResponse(
-            generate(),
+            _generate_frames(cap),
             media_type="multipart/x-mixed-replace; boundary=frame",
         )
     except ImportError:
@@ -48,30 +61,36 @@ async def camera_stream():
         return {"success": False, "error": str(e)}
 
 
+def _capture_frame():
+    """同步：拍照并保存（阻塞操作，需在线程中调用）"""
+    import cv2
+    cap = cv2.VideoCapture(0)
+    if not cap.isOpened():
+        cap.release()
+        return None, None
+    ret, frame = cap.read()
+    cap.release()
+    if not ret:
+        return None, None
+
+    config.SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
+    ts = time.strftime("%Y%m%d_%H%M%S")
+    path = config.SNAPSHOTS_DIR / f"snap_{ts}.jpg"
+    cv2.imwrite(str(path), frame)
+    return frame, path
+
+
 @router.post("/camera/capture")
 async def camera_capture():
     """拍照并分析"""
     try:
-        import cv2
-        cap = cv2.VideoCapture(0)
-        if not cap.isOpened():
+        frame, path = await asyncio.to_thread(_capture_frame)
+        if frame is None:
             return {"success": True, "data": {
-                "description": "摄像头未连接",
+                "description": "摄像头未连接或拍照失败",
                 "faces": [],
                 "snapshot_path": None,
             }}
-
-        ret, frame = cap.read()
-        cap.release()
-
-        if not ret:
-            return {"success": False, "error": "拍照失败"}
-
-        # 保存快照
-        config.SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
-        ts = time.strftime("%Y%m%d_%H%M%S")
-        path = config.SNAPSHOTS_DIR / f"snap_{ts}.jpg"
-        cv2.imwrite(str(path), frame)
 
         # LLM 分析
         analysis = "明亮的室内环境"

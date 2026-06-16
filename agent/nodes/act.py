@@ -68,26 +68,7 @@ def _check_environment(sensor: dict) -> list[str]:
 
 
 def _trigger_alerts(alerts: list[str], sensor: dict):
-    """环境异常时触发 LED + 蜂鸣器 + OLED 警告"""
-    temp = sensor.get("temp", 25)
-    humidity = sensor.get("humidity", 50)
-
-    # LED 变警告色
-    try:
-        from hardware.led import get_led
-        led = get_led()
-        if temp > _TEMP_HIGH:
-            led.set_alert("temp_high")
-            led.blink(255, 0, 0, times=3, interval=0.2)
-        elif temp < _TEMP_LOW:
-            led.set_alert("temp_low")
-        if humidity > _HUMI_HIGH:
-            led.set_alert("humi_high")
-        elif humidity < _HUMI_LOW:
-            led.set_alert("humi_low")
-    except Exception as e:
-        logger.debug("LED alert skipped: %s", e)
-
+    """环境异常时触发蜂鸣器 + OLED 警告"""
     # 蜂鸣器响警报
     try:
         from hardware.buzzer import get_buzzer
@@ -138,10 +119,13 @@ def act_node(state: PetState) -> dict:
                 user_input = msg.get("content", "")
                 break
 
+        # 根据 state 推断来源：有 voice_text 则为语音，否则为 web
+        source = "voice" if state.get("voice_text") else "web"
+
         with get_conn() as conn:
             conn.execute(
                 "INSERT INTO interactions (source, user_input, agent_reply, mood) VALUES (?, ?, ?, ?)",
-                ("web", user_input, reply, mood),
+                (source, user_input, reply, mood),
             )
     except Exception as e:
         logger.debug("Failed to log interaction: %s", e)
@@ -162,13 +146,6 @@ def act_node(state: PetState) -> dict:
             oled.show_text(reply[:60])
     except Exception as e:
         logger.debug("OLED output skipped: %s", e)
-
-    try:
-        from hardware.led import get_led
-        led = get_led()
-        led.set_mood(mood)
-    except Exception as e:
-        logger.debug("LED output skipped: %s", e)
 
     # ——— 环境异常检测 ———
     alerts = _check_environment(sensor)

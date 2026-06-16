@@ -83,22 +83,29 @@ async def lifespan(app):
     init_db()
     logger.info("Database initialized")
 
-    # 加载持久化的 LLM 配置
+    # 加载持久化的配置
     config.load_llm_config()
     logger.info("LLM config loaded: model=%s", config.LLM_MODEL)
 
-    _stop_event.clear()
-    _sensor_thread = threading.Thread(target=_sensor_poll_loop, daemon=True, name="sensor-poll")
-    _sensor_thread.start()
-    logger.info("Sensor polling started (interval=%ds)", config.SENSOR_POLL_INTERVAL)
+    # 传感器轮询
+    if config.SERVICE_SENSOR_ENABLED:
+        _stop_event.clear()
+        _sensor_thread = threading.Thread(target=_sensor_poll_loop, daemon=True, name="sensor-poll")
+        _sensor_thread.start()
+        logger.info("Sensor polling started (interval=%ds)", config.SENSOR_POLL_INTERVAL)
+    else:
+        logger.info("Sensor polling disabled (SERVICE_SENSOR_ENABLED=False)")
 
-    # 启动提醒调度器 + 加载已有提醒
-    reminder_scheduler.start()
-    _load_existing_reminders()
-    logger.info("Reminder scheduler started")
+    # 提醒调度器
+    if config.SERVICE_REMINDER_ENABLED:
+        reminder_scheduler.start()
+        _load_existing_reminders()
+        logger.info("Reminder scheduler started")
+    else:
+        logger.info("Reminder scheduler disabled (SERVICE_REMINDER_ENABLED=False)")
 
-    # 启动语音监听（VAD 持续监听麦克风）
-    if config.VOICE_ENABLED:
+    # 语音监听（VAD 持续监听麦克风）
+    if config.SERVICE_VOICE_ENABLED:
         try:
             from perception.listener import get_listener
             voice_listener = get_listener()
@@ -106,21 +113,34 @@ async def lifespan(app):
             logger.info("Voice listener started (threshold=%d)", config.VOICE_ENERGY_THRESHOLD)
         except Exception as e:
             logger.warning("Voice listener failed to start: %s", e)
+    else:
+        logger.info("Voice listener disabled (SERVICE_VOICE_ENABLED=False)")
 
     logger.info("Web service ready: http://%s:%d", config.WEB_HOST, config.WEB_PORT)
     yield
 
     # 关闭语音监听
-    try:
-        from perception.listener import get_listener
-        get_listener().stop()
-    except Exception:
-        pass
+    if config.SERVICE_VOICE_ENABLED:
+        try:
+            from perception.listener import get_listener
+            get_listener().stop()
+        except Exception:
+            pass
 
-    reminder_scheduler.shutdown()
+    if config.SERVICE_REMINDER_ENABLED:
+        reminder_scheduler.shutdown()
     _stop_event.set()
     if _sensor_thread:
         _sensor_thread.join(timeout=5)
+
+    # 释放所有 GPIO 资源
+    try:
+        import RPi.GPIO as GPIO
+        GPIO.cleanup()
+        logger.info("GPIO cleanup done")
+    except Exception:
+        pass
+
     logger.info("System shutdown complete")
 
 

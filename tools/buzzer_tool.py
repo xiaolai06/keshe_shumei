@@ -10,8 +10,8 @@ logger = logging.getLogger("SmartHome")
 def play_buzzer(sound: str = "beep") -> dict:
     """播放蜂鸣器提示音"""
     try:
-        from hardware.buzzer import Buzzer
-        buzzer = Buzzer()
+        from hardware.buzzer import get_buzzer
+        buzzer = get_buzzer()
         if sound == "reminder":
             buzzer.reminder_sound()
         elif sound == "welcome":

@@ -19,7 +19,7 @@ def read_and_store() -> dict:
         conn.execute(
             "INSERT INTO sensor_readings (temperature, humidity, light_level) "
             "VALUES (?, ?, ?)",
-            (data["temperature"], data["humidity"], data["light_lux"]),
+            (data["temperature"], data["humidity"], data["light_level"]),
         )
     return data
 
@@ -35,7 +35,7 @@ def get_latest() -> dict:
     return {
         "temperature": row["temperature"],
         "humidity": row["humidity"],
-        "light_lux": row["light_level"],
+        "light_level": row["light_level"],
         "fire_detected": False,
         "comfort_score": _calc_comfort(row["temperature"], row["humidity"]),
         "timestamp": row["timestamp"],

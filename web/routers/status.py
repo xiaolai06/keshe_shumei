@@ -4,6 +4,7 @@ GET /api/status            — 当前状态
 GET /api/evolution         — 进化信息
 GET /api/evolution/history — 进化历史
 """
+import json
 import logging
 from datetime import datetime
 from fastapi import APIRouter

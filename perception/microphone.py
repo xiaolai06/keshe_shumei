@@ -30,8 +30,8 @@ class Microphone:
     def __init__(
         self,
         sample_rate: int = 16000,
-        channels: int = 1,
-        sample_width: int = 2,       # S16_LE = 2 bytes
+        channels: int = 1,        # 单声道（单个 INMP441 麦克风）
+        sample_width: int = 2,    # S16_LE = 2 bytes
         frame_duration_ms: int = 50,  # 每帧 50ms
     ):
         self.sample_rate = sample_rate

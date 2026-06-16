@@ -3,6 +3,7 @@ AI Agent — LLM 客户端封装
 基于 OpenAI 兼容接口，支持 DeepSeek / OpenAI / 自定义 API
 """
 import logging
+import threading
 from typing import AsyncGenerator
 
 from openai import OpenAI, AsyncOpenAI
@@ -180,20 +181,24 @@ class ChatLLM:
 
 # ─── 全局单例 ──────────────────────────────────
 _llm: ChatLLM | None = None
+_llm_lock = threading.Lock()
 
 
 def get_llm() -> ChatLLM:
-    """获取全局 LLM 客户端单例（懒初始化）"""
+    """获取全局 LLM 客户端单例（懒初始化，线程安全）"""
     global _llm
     if _llm is None:
-        _llm = ChatLLM()
+        with _llm_lock:
+            if _llm is None:
+                _llm = ChatLLM()
     return _llm
 
 
 def refresh_llm():
-    """配置变更后刷新全局 LLM 客户端"""
+    """配置变更后刷新全局 LLM 客户端（线程安全）"""
     global _llm
-    if _llm is not None:
-        _llm._refresh()
-    else:
-        _llm = ChatLLM()
+    with _llm_lock:
+        if _llm is not None:
+            _llm._refresh()
+        else:
+            _llm = ChatLLM()

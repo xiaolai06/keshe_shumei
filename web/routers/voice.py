@@ -75,9 +75,15 @@ async def voice_trigger(req: VoiceTriggerRequest):
 async def voice_upload(audio: UploadFile = File(...)):
     """
     上传音频文件 → 云端 STT 识别 → 文字送入 Agent。
-    用途：硬件按钮录音后上传音频。
+    用途：硬件按钮录音后上传音频。限制 10MB。
     """
     try:
+        # 上传大小限制: 10MB
+        MAX_SIZE = 10 * 1024 * 1024
+        content_length = audio.size or 0
+        if content_length > MAX_SIZE:
+            return {"success": False, "error": f"音频文件过大（最大 10MB），当前 {content_length / 1024 / 1024:.1f}MB"}
+
         audio_bytes = await audio.read()
         if not audio_bytes:
             return {"success": False, "error": "音频为空"}

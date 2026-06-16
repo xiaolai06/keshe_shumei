@@ -13,16 +13,13 @@ langchain-openai>=0.2
 # LLM & Multimodal (DeepSeek OpenAI-compatible)
 openai>=1.30
 
-# Voice
-openai-whisper>=20231117
-pyaudio>=0.2.14
-webrtcvad>=2.0.10
+# HTTP
+httpx>=0.25
 
-# TTS
+# Voice / TTS
 edge-tts>=6.1
 
 # Database
-chromadb>=0.4
 aiosqlite>=0.19
 
 # Hardware (Raspberry Pi)

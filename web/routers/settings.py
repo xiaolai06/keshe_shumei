@@ -114,9 +114,15 @@ async def test_stt_connection():
 @router.post("/stt/recognize")
 async def stt_recognize(audio: UploadFile = File(...)):
     """
-    接收浏览器录音的音频文件，调用云端 STT API 识别。
+    接收浏览器录音的音频文件，调用云端 STT API 识别。限制 10MB。
     """
     try:
+        # 上传大小限制: 10MB
+        MAX_SIZE = 10 * 1024 * 1024
+        content_length = audio.size or 0
+        if content_length > MAX_SIZE:
+            return {"success": False, "error": f"音频文件过大（最大 10MB），当前 {content_length / 1024 / 1024:.1f}MB"}
+
         audio_bytes = await audio.read()
         if not audio_bytes:
             return {"success": False, "error": "音频为空"}

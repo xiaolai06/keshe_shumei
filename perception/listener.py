@@ -86,13 +86,17 @@ class VoiceListener:
             sensor = get_latest()
             memo = MemoryManager()
 
+            from datetime import datetime
+            now = datetime.now()
             state = {
                 "messages": [{"role": "user", "content": text}],
                 "sensor_data": {
                     "temp": sensor.get("temperature", 25),
                     "humidity": sensor.get("humidity", 50),
-                    "light": sensor.get("light_level", 300),
+                    "light": sensor.get("light_level", 0),
                     "comfort": sensor.get("comfort_score", 0.7),
+                    "datetime": now.strftime("%Y-%m-%d %H:%M"),
+                    "hour": now.hour,
                 },
                 "voice_text": text,
                 "image_desc": None,
@@ -130,13 +134,6 @@ class VoiceListener:
                     oled.show_text(reply[:60])
             except Exception as e:
                 logger.debug("OLED skipped: %s", e)
-
-            # ── LED 情绪颜色 ──
-            try:
-                from hardware.led import get_led
-                get_led().set_mood(mood)
-            except Exception as e:
-                logger.debug("LED skipped: %s", e)
 
             # ── 记录交互 ──
             try:

@@ -3,6 +3,7 @@ AI Agent — LangGraph 状态机
 节点: Perceive → Recall → Think → Decide → [Act | Reflect] → END
 """
 import logging
+import threading
 from langgraph.graph import StateGraph, END
 from agent.state import PetState
 from agent.nodes.perceive import perceive_node
@@ -49,11 +50,14 @@ def build_graph():
 
 # ─── 全局 Agent 单例 ───────────────────────────
 _agent = None
+_agent_lock = threading.Lock()
 
 
 def get_agent():
-    """获取全局 Agent 实例"""
+    """获取全局 Agent 实例（线程安全）"""
     global _agent
     if _agent is None:
-        _agent = build_graph()
+        with _agent_lock:
+            if _agent is None:
+                _agent = build_graph()
     return _agent

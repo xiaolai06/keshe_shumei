@@ -24,20 +24,26 @@ def recall_node(state: PetState) -> dict:
             break
 
     memories = []
-    if query:
+    mm = None
+    try:
+        from memory.manager import MemoryManager
+        mm = MemoryManager()
+    except Exception as e:
+        logger.debug("MemoryManager init failed: %s", e)
+
+    if query and mm is not None:
         try:
-            from memory.manager import MemoryManager
-            mm = MemoryManager()
             memories = mm.recall(query, top_k=5)
         except Exception as e:
             logger.debug("Memory recall failed (expected if no memories yet): %s", e)
 
     # 也获取最近上下文作为工作记忆
     recent = []
-    try:
-        recent = mm.get_recent_context(n=5)
-    except Exception:
-        pass
+    if mm is not None:
+        try:
+            recent = mm.get_recent_context(n=5)
+        except Exception:
+            pass
 
     all_memories = memories + recent
     logger.debug("Recall: %d memories retrieved", len(all_memories))

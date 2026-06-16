@@ -27,9 +27,12 @@ def get_speaker() -> "Speaker":
 class Speaker:
     """USB 音响驱动（edge-tts 生成 + mpg123/aplay 播放）"""
 
+    _tts_counter = 0
+
     def __init__(self, voice: str = "zh-CN-XiaoxiaoNeural"):
         self.voice = voice
         self._available: bool | None = None
+        self._play_lock = asyncio.Lock()
 
     def _check(self) -> bool:
         """检查 mpg123 是否可用"""
@@ -42,37 +45,45 @@ class Speaker:
         return self._available
 
     async def speak(self, text: str):
-        """TTS 语音播报（异步）
+        """TTS 语音播报（异步，串行化播放防止重叠）
 
         流程: text → edge-tts 生成 MP3 → mpg123 播放
         """
         if not text or not text.strip():
             return
 
-        try:
-            import edge_tts
-        except ImportError:
-            logger.error("edge-tts 未安装: pip install edge-tts")
-            return
-
-        tmp_path = Path(tempfile.gettempdir()) / f"pet_tts_{id(text) % 100000}.mp3"
-
-        try:
-            communicate = edge_tts.Communicate(text.strip(), self.voice)
-            await communicate.save(str(tmp_path))
-            logger.info("TTS generated: %s", tmp_path)
-            self.play_mp3(str(tmp_path))
-        except Exception as e:
-            logger.error("TTS failed: %s", e)
-        finally:
+        async with self._play_lock:
             try:
-                tmp_path.unlink(missing_ok=True)
-            except Exception:
-                pass
+                import edge_tts
+            except ImportError:
+                logger.error("edge-tts 未安装: pip install edge-tts")
+                return
+
+            Speaker._tts_counter += 1
+            tmp_path = Path(tempfile.gettempdir()) / f"pet_tts_{Speaker._tts_counter}.mp3"
+
+            try:
+                communicate = edge_tts.Communicate(text.strip(), self.voice)
+                await communicate.save(str(tmp_path))
+                logger.info("TTS generated: %s", tmp_path)
+                self.play_mp3(str(tmp_path))
+            except Exception as e:
+                logger.error("TTS failed: %s", e)
+            finally:
+                try:
+                    tmp_path.unlink(missing_ok=True)
+                except Exception:
+                    pass
 
     def speak_sync(self, text: str):
         """同步包装：后台线程执行，不阻塞调用线程"""
-        threading.Thread(target=lambda: asyncio.run(self.speak(text)), daemon=True).start()
+        def _run():
+            loop = asyncio.new_event_loop()
+            try:
+                loop.run_until_complete(self.speak(text))
+            finally:
+                loop.close()
+        threading.Thread(target=_run, daemon=True).start()
 
     def play_mp3(self, filepath: str):
         """播放 MP3 文件"""
@@ -89,8 +100,8 @@ class Speaker:
                 logger.error("mpg123 failed: %s", e)
 
         # fallback: aplay 不支持 mp3，尝试 ffmpeg 转换
+        wav_path = filepath.replace(".mp3", ".wav")
         try:
-            wav_path = filepath.replace(".mp3", ".wav")
             subprocess.run(
                 ["ffmpeg", "-y", "-i", filepath, "-acodec", "pcm_s16le", wav_path],
                 capture_output=True, timeout=10,
@@ -98,6 +109,11 @@ class Speaker:
             self.play_wav(wav_path)
         except Exception as e:
             logger.error("MP3 playback failed: %s", e)
+        finally:
+            try:
+                Path(wav_path).unlink(missing_ok=True)
+            except Exception:
+                pass
 
     def play_wav(self, filepath: str):
         """播放 WAV 文件"""

@@ -7,10 +7,10 @@
 用法：
   python hardware_test.py          # 测试所有模块
   python hardware_test.py ds18b20  # 只测试温度传感器
-  python hardware_test.py led      # 只测试 RGB LED
+  python hardware_test.py oled     # 只测试 OLED 显示屏
 
 支持的模块名：
-  ds18b20, dht11, light, mq135, oled, led, buzzer, camera, speaker, mic
+  ds18b20, dht22, light, oled, buzzer, camera, speaker, mic
 """
 import sys
 import time
@@ -20,16 +20,17 @@ import subprocess
 # 引脚定义（BCM 编号，与 config.py 一致）
 # ══════════════════════════════════════════════
 PIN_DS18B20 = 4
-PIN_DHT11 = 17
-PIN_LED_R = 27
-PIN_LED_G = 22
-PIN_LED_B = 5
+PIN_DHT22 = 17
+PIN_LIGHT = 27
 PIN_BUZZER = 12
-# SPI
+# SPI (SSD1351 OLED)
 OLED_CS = 8
 OLED_DC = 13
 OLED_RST = 24
-ADC_CS = 7
+# I2S (INMP441 麦克风)
+I2S_BCLK = 18
+I2S_LRCK = 19
+I2S_DIN = 20
 
 
 def header(title: str):
@@ -63,6 +64,8 @@ def test_ds18b20():
         fail("未检测到 DS18B20 设备")
         info("检查: 1) 接线是否正确  2) 是否启用了 1-Wire (dtoverlay=w1-gpio)")
         info("在 /boot/config.txt 加入: dtoverlay=w1-gpio，然后重启")
+        info("接线: VCC→3.3V(物理1), GND→GND(物理6), DQ→GPIO4(物理7)")
+        info("注意: DQ 与 3.3V 之间必须接 10KΩ 上拉电阻")
         return False
 
     device_file = devices[0] + "/temperature"
@@ -86,20 +89,20 @@ def test_ds18b20():
 
 
 # ══════════════════════════════════════════════
-# 2. DHT11 温湿度传感器
+# 2. DHT22 温湿度传感器
 # ══════════════════════════════════════════════
-def test_dht11():
-    header("DHT11 温湿度传感器 (GPIO 17)")
+def test_dht22():
+    header("DHT22 温湿度传感器 (GPIO 17)")
 
     try:
         import board
         import adafruit_dht
-        dht = adafruit_dht.DHT11(board.D17)
+        dht = adafruit_dht.DHT22(board.D17)
     except ImportError:
-        info("adafruit-circuitpython-dht 未安装，尝试用 dht 库...")
+        info("adafruit-circuitpython-dht 未安装，尝试用旧版 dht 库...")
         try:
             import Adafruit_DHT
-            humidity, temp = Adafruit_DHT.read_retry(Adafruit_DHT.DHT11, PIN_DHT11)
+            humidity, temp = Adafruit_DHT.read_retry(Adafruit_DHT.DHT22, PIN_DHT22)
             if humidity is not None and temp is not None:
                 ok(f"温度: {temp:.1f}°C  湿度: {humidity:.1f}%")
                 return True
@@ -126,120 +129,57 @@ def test_dht11():
             return False
 
     fail("3 次读取均失败，请检查接线和上拉电阻")
+    info("接线: VCC→3.3V(物理1), DATA→GPIO17(物理11), GND→GND(物理6)")
+    info("注意: DATA 与 3.3V 之间需要 10KΩ 上拉电阻（部分模块已集成）")
     return False
 
 
 # ══════════════════════════════════════════════
-# 3. 光照传感器（通过 MCP3008 ADC）
+# 3. 光照传感器（数字输出）
 # ══════════════════════════════════════════════
 def test_light():
-    header("光照传感器 (MCP3008 CH1, SPI)")
+    header("光照传感器 (GPIO 27, 数字输出)")
 
     try:
-        import spidev
+        import RPi.GPIO as GPIO
     except ImportError:
-        fail("spidev 未安装: pip install spidev")
+        fail("RPi.GPIO 未安装（树莓派自带，非树莓派环境无法测试）")
         return False
 
-    spi = spidev.SpiDev()
-    spi.open(0, 0)  # SPI0, CE0 (我们用软件控制 CS)
-    spi.max_speed_hz = 1000000
-
-    def read_adc(channel: int) -> int:
-        """读取 MCP3008 指定通道（0-7）"""
-        cmd = [1, (8 + channel) << 4, 0]
-        result = spi.xfer2(cmd)
-        value = ((result[1] & 3) << 8) + result[2]
-        return value
-
-    # 测试 CH1（光照传感器）
-    try:
-        values = []
-        for _ in range(5):
-            val = read_adc(1)
-            values.append(val)
-            time.sleep(0.2)
-
-        avg = sum(values) / len(values)
-        voltage = avg * 3.3 / 1024
-        ok(f"MCP3008 CH1 ADC 值: {avg:.0f} (电压: {voltage:.2f}V)")
-
-        if avg > 10:
-            ok("光照传感器有信号输出")
-        else:
-            info("ADC 值偏低，检查光照传感器 SIG 是否接 CH1")
-
-        # 顺便测 CH0（MQ-135）
-        val0 = read_adc(0)
-        voltage0 = val0 * 3.3 / 1024
-        ok(f"MCP3008 CH0 (MQ-135) ADC 值: {val0} (电压: {voltage0:.2f}V)")
-
-    except Exception as e:
-        fail(f"SPI 通信失败: {e}")
-        info("检查: SPI 是否启用 (sudo raspi-config → Interface → SPI)")
-        spi.close()
-        return False
-
-    spi.close()
-    return True
-
-
-# ══════════════════════════════════════════════
-# 4. MQ-135 气体传感器
-# ══════════════════════════════════════════════
-def test_mq135():
-    header("MQ-135 气体传感器 (MCP3008 CH0)")
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setwarnings(False)
+    GPIO.setup(PIN_LIGHT, GPIO.IN)
 
     try:
-        import spidev
-    except ImportError:
-        fail("spidev 未安装: pip install spidev")
-        return False
-
-    spi = spidev.SpiDev()
-    spi.open(0, 0)
-    spi.max_speed_hz = 1000000
-
-    def read_adc(channel: int) -> int:
-        cmd = [1, (8 + channel) << 4, 0]
-        result = spi.xfer2(cmd)
-        return ((result[1] & 3) << 8) + result[2]
-
-    try:
-        info("MQ-135 需要预热，读取 5 次取平均...")
-        values = []
+        info("读取 5 次光照状态...")
         for i in range(5):
-            val = read_adc(0)
-            values.append(val)
-            info(f"  第 {i+1} 次: ADC={val}, 电压={val*3.3/1024:.2f}V")
-            time.sleep(1)
+            value = GPIO.input(PIN_LIGHT)
+            status = "光照充足 (HIGH)" if value else "光照不足 (LOW)"
+            ok(f"第 {i+1} 次: {status}")
+            time.sleep(0.5)
 
-        avg = sum(values) / len(values)
-        ok(f"平均 ADC 值: {avg:.0f} (电压: {avg*3.3/1024:.2f}V)")
-
-        if avg > 50:
-            ok("传感器有输出（数值会随预热时间逐渐稳定）")
-        else:
-            info("ADC 值偏低，可能传感器未预热或接线有误")
+        info("提示: 可用手遮挡传感器观察输出变化")
+        info("如果状态不变化，请调节模块上的电位器校准阈值")
 
     except Exception as e:
         fail(f"读取失败: {e}")
-        spi.close()
+        info("接线: VCC→3.3V(物理1), GND→GND(物理6), SIG→GPIO27(物理13)")
+        GPIO.cleanup()
         return False
 
-    spi.close()
+    GPIO.cleanup()
     return True
 
 
 # ══════════════════════════════════════════════
-# 5. SSD1306 OLED 显示屏 (SPI)
+# 4. SSD1351 RGB OLED 显示屏 (SPI)
 # ══════════════════════════════════════════════
 def test_oled():
-    header("SSD1306 OLED 显示屏 (SPI)")
+    header("SSD1351 RGB OLED 显示屏 (SPI, 128×128)")
 
     try:
         from luma.core.interface.serial import spi
-        from luma.oled.device import ssd1306
+        from luma.oled.device import ssd1351
         from PIL import Image, ImageDraw, ImageFont
     except ImportError:
         fail("依赖未安装: pip install luma.oled pillow")
@@ -247,8 +187,8 @@ def test_oled():
 
     try:
         serial = spi(port=0, device=0, gpio_DC=OLED_DC, gpio_RST=OLED_RST, gpio_CS=OLED_CS)
-        device = ssd1306(serial, width=128, height=64)
-        ok("OLED 初始化成功 (128×64)")
+        device = ssd1351(serial, width=128, height=128)
+        ok("OLED 初始化成功 (128×128 RGB SSD1351)")
 
         # 测试 1: 清屏
         device.hide()
@@ -256,22 +196,25 @@ def test_oled():
         device.show()
         ok("显示/隐藏 测试通过")
 
-        # 测试 2: 画文字
-        img = Image.new("1", (128, 64), 0)
+        # 测试 2: 彩色文字
+        img = Image.new("RGB", (128, 128), (0, 0, 0))
         draw = ImageDraw.Draw(img)
-        draw.text((10, 10), "Hello Pi!", fill=1)
-        draw.text((10, 30), "Smart Home", fill=1)
-        draw.text((10, 48), "Test OK!", fill=1)
+        draw.text((10, 10), "Hello Pi!", fill=(255, 255, 255))
+        draw.text((10, 30), "Smart Home", fill=(255, 200, 50))
+        draw.text((10, 50), "SSD1351 RGB", fill=(0, 200, 255))
+        draw.text((10, 70), "Test OK!", fill=(50, 255, 100))
         device.display(img)
-        ok("文字显示测试（屏幕上应看到 3 行文字）")
+        ok("彩色文字显示测试（屏幕上应看到 4 行不同颜色的文字）")
 
         time.sleep(2)
 
-        # 测试 3: 画图案
-        draw.rectangle((0, 0, 127, 63), outline=1, fill=0)
-        draw.ellipse((40, 10, 88, 54), outline=1, fill=1)
+        # 测试 3: 彩色图形
+        img = Image.new("RGB", (128, 128), (0, 0, 0))
+        draw = ImageDraw.Draw(img)
+        draw.ellipse((20, 20, 108, 108), outline=(255, 200, 50), width=2)
+        draw.ellipse((40, 40, 88, 88), fill=(0, 200, 255))
         device.display(img)
-        ok("图形显示测试（屏幕上应看到圆形）")
+        ok("彩色图形测试（屏幕上应看到彩色圆环）")
 
         time.sleep(2)
 
@@ -282,78 +225,19 @@ def test_oled():
     except Exception as e:
         fail(f"OLED 测试失败: {e}")
         info("检查: VCC/GND/DIN/CLK/CS/DC/RST 接线是否正确")
+        info("接线: VCC→3.3V(物理1), GND→GND(物理6)")
+        info("      DIN→GPIO10(物理19), CLK→GPIO11(物理23)")
+        info("      CS→GPIO8(物理24), DC→GPIO13(物理33), RST→GPIO24(物理18)")
         return False
 
     return True
 
 
 # ══════════════════════════════════════════════
-# 6. RGB LED（共阳极）
-# ══════════════════════════════════════════════
-def test_led():
-    header("RGB LED（共阳极，GPIO 27/22/5）")
-
-    try:
-        import RPi.GPIO as GPIO
-    except ImportError:
-        fail("RPi.GPIO 未安装（树莓派自带，非树莓派环境无法测试）")
-        return False
-
-    GPIO.setmode(GPIO.BCM)
-    GPIO.setup(PIN_LED_R, GPIO.OUT)
-    GPIO.setup(PIN_LED_G, GPIO.OUT)
-    GPIO.setup(PIN_LED_B, GPIO.OUT)
-
-    # 共阳极：PWM 频率 1000Hz
-    r_pwm = GPIO.PWM(PIN_LED_R, 1000)
-    g_pwm = GPIO.PWM(PIN_LED_G, 1000)
-    b_pwm = GPIO.PWM(PIN_LED_B, 1000)
-    r_pwm.start(0)
-    g_pwm.start(0)
-    b_pwm.start(0)
-
-    def set_rgb(r: int, g: int, b: int):
-        """共阳极：0=最亮，100=灭"""
-        r_pwm.ChangeDutyCycle((255 - r) / 255 * 100)
-        g_pwm.ChangeDutyCycle((255 - g) / 255 * 100)
-        b_pwm.ChangeDutyCycle((255 - b) / 255 * 100)
-
-    try:
-        # 依次测试红、绿、蓝、白
-        colors = [
-            ("红色", (255, 0, 0)),
-            ("绿色", (0, 255, 0)),
-            ("蓝色", (0, 0, 255)),
-            ("黄色", (255, 200, 0)),
-            ("紫色", (150, 0, 255)),
-            ("白色", (255, 255, 255)),
-        ]
-
-        for name, (r, g, b) in colors:
-            set_rgb(r, g, b)
-            info(f"显示 {name} (R={r}, G={g}, B={b}) — 观察 LED 颜色")
-            time.sleep(1.5)
-
-        # 关闭
-        set_rgb(0, 0, 0)
-        ok("LED 测试完成（共阳极已关闭）")
-
-    except Exception as e:
-        fail(f"LED 测试失败: {e}")
-    finally:
-        r_pwm.stop()
-        g_pwm.stop()
-        b_pwm.stop()
-        GPIO.cleanup()
-
-    return True
-
-
-# ══════════════════════════════════════════════
-# 7. 有源蜂鸣器
+# 5. 有源蜂鸣器模块
 # ══════════════════════════════════════════════
 def test_buzzer():
-    header("有源蜂鸣器 (GPIO 12)")
+    header("有源蜂鸣器模块 (GPIO 12)")
 
     try:
         import RPi.GPIO as GPIO
@@ -398,7 +282,7 @@ def test_buzzer():
 
 
 # ══════════════════════════════════════════════
-# 8. USB 摄像头
+# 6. USB 摄像头
 # ══════════════════════════════════════════════
 def test_camera():
     header("USB 摄像头")
@@ -454,10 +338,10 @@ def test_camera():
 
 
 # ══════════════════════════════════════════════
-# 9. USB 音响
+# 7. USB 音响 (Waveshare USB TO AUDIO)
 # ══════════════════════════════════════════════
 def test_speaker():
-    header("USB 音响")
+    header("USB 音响 (Waveshare USB TO AUDIO)")
 
     # 检查音频设备
     try:
@@ -469,7 +353,7 @@ def test_speaker():
                     info(f"  {line.strip()}")
         else:
             fail("未检测到 USB 音频设备")
-            info("检查: USB 音响是否插好")
+            info("检查: Waveshare USB TO AUDIO 是否插好")
             return False
     except FileNotFoundError:
         fail("aplay 命令不可用（非 Linux 环境？）")
@@ -507,10 +391,10 @@ def test_speaker():
 
 
 # ══════════════════════════════════════════════
-# 10. I2S 麦克风 (INMP441 ×2)
+# 8. INMP441 I2S 麦克风
 # ══════════════════════════════════════════════
 def test_mic():
-    header("INMP441 I2S 麦克风 ×2")
+    header("INMP441 I2S 麦克风")
 
     # 检查 I2S 设备
     try:
@@ -524,7 +408,9 @@ def test_mic():
             fail("未检测到 I2S 录音设备")
             info("检查: 1) /boot/config.txt 是否有 dtoverlay=i2s-mmic")
             info("       2) INMP441 VDD/GND/SCK/WS/SD 接线是否正确")
-            info("       3) L/R 引脚: 麦克风1接 GND，麦克风2接 3.3V")
+            info("接线: VDD→3.3V(物理1), GND→GND(物理6)")
+            info("      SCK→GPIO18(物理12), WS→GPIO19(物理35), SD→GPIO20(物理38)")
+            info("      L/R→GND (选择左声道)")
             return False
     except FileNotFoundError:
         fail("arecord 命令不可用")
@@ -534,7 +420,7 @@ def test_mic():
     try:
         info("录音 2 秒...")
         subprocess.run([
-            "arecord", "-D", "default", "-f", "S32_LE", "-r", "16000", "-c", "2",
+            "arecord", "-D", "default", "-f", "S16_LE", "-r", "16000", "-c", "1",
             "-d", "2", "/tmp/hardware_test_mic.wav"
         ], timeout=10, capture_output=True)
 
@@ -557,7 +443,7 @@ def test_mic():
 
 
 # ══════════════════════════════════════════════
-# 11. 语音识别 (麦克风 → STT → 文字)
+# 9. 语音识别 (麦克风 → STT → 文字)
 # ══════════════════════════════════════════════
 def test_voice():
     header("语音识别 (麦克风 → STT API)")
@@ -658,28 +544,14 @@ def test_voice():
 # ══════════════════════════════════════════════
 ALL_TESTS = {
     "ds18b20":  ("DS18B20 温度传感器", test_ds18b20),
-    "dht11":    ("DHT11 温湿度传感器", test_dht11),
-    "light":    ("光照传感器 (MCP3008)", test_light),
-    "mq135":    ("MQ-135 气体传感器", test_mq135),
-    "oled":     ("SSD1306 OLED 显示屏", test_oled),
-    "led":      ("RGB LED", test_led),
-    "buzzer":   ("有源蜂鸣器", test_buzzer),
+    "dht22":    ("DHT22 温湿度传感器", test_dht22),
+    "light":    ("光照传感器 (数字输出)", test_light),
+    "oled":     ("SSD1351 RGB OLED 显示屏", test_oled),
+    "buzzer":   ("有源蜂鸣器模块", test_buzzer),
     "camera":   ("USB 摄像头", test_camera),
     "speaker":  ("USB 音响", test_speaker),
     "mic":      ("INMP441 I2S 麦克风", test_mic),
     "voice":    ("语音识别 (麦克风→STT→文字)", test_voice),
-}
-ALL_TESTS = {
-    "ds18b20":  ("DS18B20 温度传感器", test_ds18b20),
-    "dht11":    ("DHT11 温湿度传感器", test_dht11),
-    "light":    ("光照传感器 (MCP3008)", test_light),
-    "mq135":    ("MQ-135 气体传感器", test_mq135),
-    "oled":     ("SSD1306 OLED 显示屏", test_oled),
-    "led":      ("RGB LED", test_led),
-    "buzzer":   ("有源蜂鸣器", test_buzzer),
-    "camera":   ("USB 摄像头", test_camera),
-    "speaker":  ("USB 音响", test_speaker),
-    "mic":      ("INMP441 I2S 麦克风", test_mic),
 }
 
 

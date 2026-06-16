@@ -37,25 +37,24 @@ LLM_MAX_TOKENS = 512
 # ══════════════════════════════════════════════
 # 硬件引脚 (BCM 编号)
 # ══════════════════════════════════════════════
-PIN_DHT11 = 17         # DHT11 温湿度 (GPIO 17, 物理11)
-PIN_LED_R = 27         # RGB LED 红
-PIN_LED_G = 22         # RGB LED 绿
-PIN_LED_B = 5          # RGB LED 蓝
-PIN_BUZZER = 12        # 蜂鸣器 (GPIO 12, 物理32)
-PIN_RELAY_DOOR = 23    # 门锁继电器
 
-# I2C
-I2C_BH1750_ADDR = 0x23
+# ── 传感器（输入） ──
+PIN_DS18B20 = 4          # DS18B20 温度传感器 (1-Wire, GPIO 4, 物理7)
+PIN_DHT22 = 17           # DHT22 温湿度传感器 (单总线, GPIO 17, 物理11)
+PIN_LIGHT = 27           # 光照传感器数字输出 (GPIO 27, 物理13)
 
-# SPI (OLED + MCP3008 共享 SPI0 总线)
-OLED_SPI_CS = 8        # OLED 片选 CE0 (GPIO 8, 物理24)
-OLED_SPI_DC = 13       # OLED 数据/命令 (GPIO 13, 物理33)
-OLED_SPI_RST = 24      # OLED 复位 (GPIO 24, 物理18)
-ADC_SPI_CS = 7         # MCP3008 片选 CE1 (GPIO 7, 物理26)
+# ── 输出设备 ──
+PIN_BUZZER = 12          # 有源蜂鸣器模块 (GPIO 12, 物理32)
 
-# UART (语音模块)
-UART_PORT = "/dev/ttyAMA0"
-UART_BAUDRATE = 9600
+# ── SPI (OLED 独占 SPI0 总线) ──
+OLED_SPI_CS = 8          # SSD1351 OLED 片选 CE0 (GPIO 8, 物理24)
+OLED_SPI_DC = 13         # SSD1351 OLED 数据/命令 (GPIO 13, 物理33)
+OLED_SPI_RST = 24        # SSD1351 OLED 复位 (GPIO 24, 物理18)
+
+# ── I2S (INMP441 麦克风) ──
+I2S_BCLK = 18            # I2S 位时钟 (GPIO 18, 物理12)
+I2S_LRCK = 19            # I2S 字选择 (GPIO 19, 物理35)
+I2S_DIN = 20             # I2S 数据输入 (GPIO 20, 物理38)
 
 # ══════════════════════════════════════════════
 # 情绪系统
@@ -84,13 +83,20 @@ FACE_MATCH_THRESHOLD = 0.6
 SENSOR_POLL_INTERVAL = 10  # 秒
 
 # ══════════════════════════════════════════════
-# 语音监听 (VAD)
+# 语音监听 (VAD) 参数
 # ══════════════════════════════════════════════
-VOICE_ENABLED = True               # 是否启动时自动开启语音监听
 VOICE_ENERGY_THRESHOLD = 500       # 能量阈值（低于此值算静音，需根据环境调整）
 VOICE_SILENCE_MS = 1500            # 连续静音多少毫秒算说完一句话
 VOICE_MIN_SPEECH_MS = 500          # 最短语音段（太短忽略，防误触发）
 VOICE_MAX_SPEECH_S = 30            # 单段语音最长秒数（防无限录音）
+
+# ══════════════════════════════════════════════
+# 服务开关（默认全部关闭，需要时手动开启）
+# ══════════════════════════════════════════════
+SERVICE_WEB_ENABLED = False        # 是否启动 Web 服务器
+SERVICE_SENSOR_ENABLED = False     # 是否启动传感器轮询
+SERVICE_REMINDER_ENABLED = False   # 是否启动提醒调度器
+SERVICE_VOICE_ENABLED = False      # 是否启动语音监听
 
 # ══════════════════════════════════════════════
 # Web
