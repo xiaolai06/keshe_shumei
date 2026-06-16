@@ -1,0 +1,1710 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 桌宠 Agent — UI 设计规范文档</title>
+    <style>
+        /* ══════════════════════════════════════════════════════
+           Design Tokens
+           ══════════════════════════════════════════════════════ */
+        :root {
+            /* ── Color: Dark Surface System ── */
+            --bg:           #0b0d13;
+            --surface:      #12141d;
+            --surface-2:    #181b27;
+            --surface-3:    #1e2132;
+            --border:       #22253a;
+            --border-light: #2a2e48;
+            --text:         #e4e4ec;
+            --text-2:       #898da4;
+            --text-3:       #5c6080;
+
+            /* ── Accent & Semantic ── */
+            --accent:       #6e8cff;
+            --accent-hover: #8ba4ff;
+            --accent-s:     rgba(110, 140, 255, 0.10);
+            --accent-s2:    rgba(110, 140, 255, 0.18);
+
+            --green:        #3dd68c;
+            --green-s:      rgba(61, 214, 140, 0.10);
+            --orange:       #f59e42;
+            --orange-s:     rgba(245, 158, 66, 0.10);
+            --purple:       #a78bfa;
+            --purple-s:     rgba(167, 139, 250, 0.10);
+            --red:          #f07171;
+            --red-s:        rgba(240, 113, 113, 0.10);
+            --cyan:         #22d3ee;
+            --cyan-s:       rgba(34, 211, 238, 0.10);
+            --yellow:       #facc15;
+            --yellow-s:     rgba(250, 204, 21, 0.10);
+
+            /* ── Typography ── */
+            --font:         -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            --mono:         'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+            --text-xs:      11px;
+            --text-sm:      12.5px;
+            --text-base:    13.5px;
+            --text-md:      14.5px;
+            --text-lg:      16.5px;
+            --text-xl:      19px;
+            --text-2xl:     23px;
+
+            /* ── Spacing ── */
+            --sp-1:  4px;
+            --sp-2:  8px;
+            --sp-3:  12px;
+            --sp-4:  16px;
+            --sp-5:  20px;
+            --sp-6:  24px;
+            --sp-8:  32px;
+            --sp-10: 40px;
+            --sp-12: 48px;
+
+            /* ── Radius ── */
+            --r-sm:  6px;
+            --r-md:  8px;
+            --r-lg:  12px;
+            --r-xl:  14px;
+            --r-full: 999px;
+
+            /* ── Shadows ── */
+            --shadow-sm:  0 1px 2px rgba(0,0,0,0.25);
+            --shadow-md:  0 4px 12px rgba(0,0,0,0.3);
+            --shadow-lg:  0 8px 32px rgba(0,0,0,0.35);
+            --shadow-glow: 0 0 20px rgba(110,140,255,0.15);
+
+            /* ── Motion ── */
+            --dur-fast:    120ms;
+            --dur-normal:  200ms;
+            --dur-slow:    350ms;
+            --ease-out:    cubic-bezier(0.25, 1, 0.5, 1);
+            --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+            /* ── Z-Index Scale ── */
+            --z-base:     1;
+            --z-sticky:   10;
+            --z-dropdown: 20;
+            --z-overlay:  30;
+            --z-modal:    40;
+            --z-toast:    50;
+        }
+
+        /* ══════════════════════════════════════════════════════
+           Reset & Base
+           ══════════════════════════════════════════════════════ */
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; scroll-padding-top: 32px; font-size: 15px; }
+        body {
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.78;
+            display: flex;
+            min-height: 100vh;
+        }
+        hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+
+        /* ══════════════════════════════════════════════════════
+           Sidebar Navigation
+           ══════════════════════════════════════════════════════ */
+        .sidebar {
+            position: fixed; top: 0; left: 0;
+            width: 272px; height: 100vh;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            display: flex; flex-direction: column;
+            z-index: 100; overflow: hidden;
+        }
+        .sidebar-hd {
+            padding: 26px 22px 18px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+        .sidebar-hd .logo {
+            display: flex; align-items: center; gap: 11px;
+        }
+        .sidebar-hd .logo i {
+            width: 38px; height: 38px;
+            background: linear-gradient(135deg, var(--accent), var(--purple));
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 19px; font-style: normal;
+        }
+        .sidebar-hd h1 { font-size: 16.5px; font-weight: 700; letter-spacing: -.3px; }
+        .sidebar-hd small { display: block; font-size: 11.5px; color: var(--text-2); margin-top: 5px; }
+        .sidebar nav { flex: 1; overflow-y: auto; padding: 14px 10px; }
+        .nav-gp-t {
+            font-size: 10.5px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1.3px;
+            color: var(--text-2); padding: 9px 12px 5px;
+        }
+        .nav-l {
+            display: flex; align-items: center; gap: 9px;
+            padding: 8px 12px; border-radius: var(--r-md);
+            color: var(--text-2); text-decoration: none;
+            font-size: 13px; cursor: pointer; transition: var(--dur-fast);
+        }
+        .nav-l:hover { background: var(--surface-2); color: var(--text); }
+        .nav-l.on { background: var(--accent-s); color: var(--accent); font-weight: 600; }
+        .nav-l .ic { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; }
+
+        /* ══════════════════════════════════════════════════════
+           Main Content
+           ══════════════════════════════════════════════════════ */
+        .main {
+            margin-left: 272px; flex: 1; min-width: 0;
+            padding: 44px 58px 100px;
+            max-width: 1060px;
+        }
+        .sec { margin-bottom: 68px; padding-top: 14px; }
+        .sec-hd {
+            display: flex; align-items: center; gap: 14px;
+            margin-bottom: 26px; padding-bottom: 15px;
+            border-bottom: 1px solid var(--border);
+        }
+        .sec-hd .badge {
+            width: 40px; height: 40px; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 19px; flex-shrink: 0;
+        }
+        .sec-hd h2 { font-size: var(--text-2xl); font-weight: 700; letter-spacing: -.5px; }
+        .sec-hd .sub { font-size: var(--text-sm); color: var(--text-2); margin-top: 1px; }
+        h3 {
+            font-size: var(--text-lg); font-weight: 600;
+            margin: 30px 0 13px;
+            display: flex; align-items: center; gap: 7px;
+        }
+        h4 { font-size: var(--text-md); font-weight: 600; margin: 18px 0 8px; color: var(--text-2); }
+        p { margin-bottom: 13px; color: var(--text-2); }
+
+        /* ══════════════════════════════════════════════════════
+           Cards
+           ══════════════════════════════════════════════════════ */
+        .cg {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+            gap: 14px; margin: 14px 0;
+        }
+        .cg3 { grid-template-columns: repeat(3, 1fr); }
+        .cg2 { grid-template-columns: repeat(2, 1fr); }
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r-xl);
+            padding: 20px; transition: var(--dur-normal);
+        }
+        .card:hover { border-color: rgba(110,140,255,.28); }
+        .card .ci {
+            width: 36px; height: 36px; border-radius: 9px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 17px; margin-bottom: 12px;
+        }
+        .card h4 { margin: 0 0 7px; color: var(--text); font-size: var(--text-md); }
+        .card p { font-size: 13px; margin: 0; line-height: 1.6; }
+
+        /* ══════════════════════════════════════════════════════
+           Tables
+           ══════════════════════════════════════════════════════ */
+        .tw {
+            overflow-x: auto; margin: 14px 0;
+            border: 1px solid var(--border); border-radius: var(--r-xl);
+            background: var(--surface);
+        }
+        table { width: 100%; border-collapse: collapse; font-size: var(--text-base); }
+        thead th {
+            background: rgba(110,140,255,.05);
+            padding: 11px 15px; text-align: left; font-weight: 600;
+            border-bottom: 1px solid var(--border); white-space: nowrap;
+        }
+        tbody td {
+            padding: 10px 15px; border-bottom: 1px solid var(--border); color: var(--text-2);
+        }
+        tbody tr:last-child td { border-bottom: none; }
+        tbody tr:hover { background: var(--surface-2); }
+        .tag {
+            display: inline-flex; align-items: center;
+            padding: 2px 9px; border-radius: var(--r-full);
+            font-size: var(--text-xs); font-weight: 600; letter-spacing: .2px;
+        }
+        .t-b { background: var(--accent-s); color: var(--accent); }
+        .t-g { background: var(--green-s); color: var(--green); }
+        .t-o { background: var(--orange-s); color: var(--orange); }
+        .t-p { background: var(--purple-s); color: var(--purple); }
+        .t-r { background: var(--red-s); color: var(--red); }
+        .t-c { background: var(--cyan-s); color: var(--cyan); }
+        .t-y { background: var(--yellow-s); color: var(--yellow); }
+
+        /* ══════════════════════════════════════════════════════
+           Code & Diagrams
+           ══════════════════════════════════════════════════════ */
+        code {
+            font-family: var(--mono); font-size: var(--text-sm);
+            background: rgba(110,140,255,.08); color: var(--accent);
+            padding: 2px 6px; border-radius: 5px;
+        }
+        pre {
+            background: var(--surface);
+            border: 1px solid var(--border); border-radius: var(--r-xl);
+            padding: 20px; overflow-x: auto; margin: 13px 0;
+            font-family: var(--mono); font-size: var(--text-sm);
+            line-height: 1.72; color: var(--text-2);
+        }
+        pre code { background: none; padding: 0; color: inherit; }
+        .dbox {
+            background: var(--surface);
+            border: 1px solid var(--border); border-radius: var(--r-xl);
+            padding: 26px; margin: 18px 0; overflow-x: auto;
+            font-family: var(--mono); font-size: var(--text-sm);
+            line-height: 1.6; color: var(--text-2); white-space: pre;
+        }
+        .wf {
+            background: var(--surface-2);
+            border: 1px solid var(--border); border-radius: var(--r-xl);
+            padding: 24px; margin: 18px 0;
+            font-family: var(--mono); font-size: 11.5px;
+            line-height: 1.55; color: var(--text-2);
+            white-space: pre; overflow-x: auto;
+        }
+
+        /* ══════════════════════════════════════════════════════
+           Flow & Callout
+           ══════════════════════════════════════════════════════ */
+        .fl { list-style: none; padding: 0; margin: 14px 0; }
+        .fl li { display: flex; gap: 13px; padding: 13px 0; border-bottom: 1px solid var(--border); }
+        .fl li:last-child { border-bottom: none; }
+        .fn {
+            width: 26px; height: 26px;
+            background: var(--accent-s); color: var(--accent);
+            border-radius: 50%; display: flex; align-items: center;
+            justify-content: center; font-size: var(--text-sm);
+            font-weight: 700; flex-shrink: 0; margin-top: 2px;
+        }
+        .co {
+            border-radius: var(--r-xl); padding: 15px 18px;
+            margin: 14px 0; font-size: var(--text-base);
+            display: flex; gap: 11px; align-items: flex-start;
+        }
+        .co .coi { font-size: 17px; flex-shrink: 0; margin-top: 1px; }
+        .co-info { background: var(--accent-s); border: 1px solid rgba(110,140,255,.18); color: var(--accent); }
+        .co-warn { background: var(--orange-s); border: 1px solid rgba(245,158,66,.18); color: var(--orange); }
+        .co-ok { background: var(--green-s); border: 1px solid rgba(61,214,140,.18); color: var(--green); }
+
+        /* ══════════════════════════════════════════════════════
+           Token Preview Swatches
+           ══════════════════════════════════════════════════════ */
+        .swatch-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px; margin: 14px 0;
+        }
+        .swatch {
+            border-radius: var(--r-lg); overflow: hidden;
+            border: 1px solid var(--border);
+        }
+        .swatch-color {
+            height: 56px; display: flex; align-items: center;
+            justify-content: center; font-size: var(--text-xs);
+            color: rgba(255,255,255,.7); font-family: var(--mono);
+        }
+        .swatch-info { padding: 8px 12px; background: var(--surface); }
+        .swatch-info .name { font-size: 12px; font-weight: 600; color: var(--text); }
+        .swatch-info .val { font-size: 11px; color: var(--text-3); font-family: var(--mono); }
+
+        /* ══════════════════════════════════════════════════════
+           Component Preview Blocks
+           ══════════════════════════════════════════════════════ */
+        .preview-box {
+            background: var(--surface-2);
+            border: 1px solid var(--border); border-radius: var(--r-xl);
+            padding: 28px; margin: 14px 0;
+            display: flex; flex-wrap: wrap; gap: 12px;
+            align-items: center;
+        }
+        .preview-box.col { flex-direction: column; align-items: stretch; }
+
+        /* ── Button previews ── */
+        .btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 16px; border-radius: var(--r-md);
+            font-size: var(--text-base); font-weight: 500;
+            cursor: pointer; border: none; transition: var(--dur-fast);
+            font-family: var(--font);
+        }
+        .btn-primary { background: var(--accent); color: #fff; }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .btn-secondary { background: var(--surface-3); color: var(--text); border: 1px solid var(--border); }
+        .btn-secondary:hover { border-color: var(--border-light); background: var(--surface-2); }
+        .btn-ghost { background: transparent; color: var(--text-2); }
+        .btn-ghost:hover { background: var(--accent-s); color: var(--accent); }
+        .btn-danger { background: var(--red-s); color: var(--red); }
+        .btn-danger:hover { background: rgba(240,113,113,.18); }
+        .btn-sm { padding: 5px 10px; font-size: var(--text-sm); }
+        .btn-icon {
+            width: 32px; height: 32px; padding: 0;
+            display: inline-flex; align-items: center; justify-content: center;
+            border-radius: var(--r-md); background: var(--surface-3);
+            border: 1px solid var(--border); color: var(--text-2);
+            cursor: pointer; transition: var(--dur-fast); font-size: 14px;
+        }
+        .btn-icon:hover { background: var(--accent-s); color: var(--accent); border-color: rgba(110,140,255,.28); }
+
+        /* ── Input previews ── */
+        .input-demo {
+            width: 100%; padding: 9px 14px;
+            background: var(--surface-2); border: 1px solid var(--border);
+            border-radius: var(--r-md); color: var(--text);
+            font-size: var(--text-base); font-family: var(--font);
+            transition: var(--dur-fast); outline: none;
+        }
+        .input-demo:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(110,140,255,.12);
+        }
+        .input-demo::placeholder { color: var(--text-3); }
+
+        /* ── Badge previews ── */
+        .badge-demo {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 3px 10px; border-radius: var(--r-full);
+            font-size: var(--text-xs); font-weight: 600;
+        }
+        .badge-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+        }
+
+        /* ── Toggle / Switch previews ── */
+        .toggle-track {
+            width: 36px; height: 20px;
+            background: var(--surface-3); border: 1px solid var(--border);
+            border-radius: var(--r-full); position: relative;
+            cursor: pointer; transition: var(--dur-normal);
+        }
+        .toggle-track.on { background: var(--accent); border-color: var(--accent); }
+        .toggle-thumb {
+            width: 14px; height: 14px; border-radius: 50%;
+            background: var(--text); position: absolute;
+            top: 2px; left: 2px; transition: var(--dur-normal);
+        }
+        .toggle-track.on .toggle-thumb { left: 18px; background: #fff; }
+
+        /* ── Chat bubble previews ── */
+        .chat-demo { max-width: 480px; width: 100%; }
+        .msg-bubble {
+            max-width: 75%; padding: 10px 14px;
+            border-radius: 14px; font-size: var(--text-base);
+            margin-bottom: 10px; line-height: 1.55;
+        }
+        .msg-pet { background: var(--surface-3); color: var(--text); }
+        .msg-user { background: var(--accent-s2); color: var(--text); margin-left: auto; }
+        .msg-meta { font-size: var(--text-xs); color: var(--text-3); margin-top: 4px; }
+
+        /* ── Stat card previews ── */
+        .stat-demo {
+            background: var(--surface);
+            border: 1px solid var(--border); border-radius: var(--r-lg);
+            padding: 14px 16px; min-width: 120px; text-align: center;
+        }
+        .stat-demo .sv { font-size: 22px; font-weight: 800; letter-spacing: -.5px; }
+        .stat-demo .sl { font-size: var(--text-xs); color: var(--text-2); margin-top: 2px; }
+
+        /* ── Mood emoji strip ── */
+        .mood-strip {
+            display: flex; gap: 8px; flex-wrap: wrap;
+        }
+        .mood-chip {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 4px 12px; border-radius: var(--r-full);
+            font-size: var(--text-sm); font-weight: 500;
+            border: 1px solid var(--border);
+        }
+
+        /* ── Timeline ── */
+        .tl { margin: 18px 0; }
+        .tl-item { display: flex; gap: 15px; padding: 15px 0; position: relative; }
+        .tl-item::before {
+            content: ''; position: absolute;
+            left: 15px; top: 42px; bottom: -15px;
+            width: 2px; background: var(--border);
+        }
+        .tl-item:last-child::before { display: none; }
+        .tl-dot {
+            width: 30px; height: 30px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; font-weight: 700;
+            flex-shrink: 0; position: relative; z-index: 1;
+        }
+        .tl-body h4 { margin: 0 0 3px; color: var(--text); font-size: var(--text-base); }
+        .tl-body p { margin: 0; font-size: var(--text-sm); }
+
+        /* ══════════════════════════════════════════════════════
+           Responsive
+           ══════════════════════════════════════════════════════ */
+        @media (max-width: 1024px) {
+            .main { padding: 30px 26px 70px; }
+            .cg3 { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); transition: var(--dur-slow); }
+            .sidebar.open { transform: translateX(0); }
+            .main { margin-left: 0; padding: 20px 14px 60px; }
+            .cg3, .cg2, .cg { grid-template-columns: 1fr; }
+        }
+
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-2); }
+    </style>
+</head>
+<body>
+
+<!-- ══════════════════ SIDEBAR ══════════════════ -->
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-hd">
+        <div class="logo"><i>🎨</i><h1>UI 设计规范</h1></div>
+        <small>AI 桌宠 Agent · Web Dashboard</small>
+    </div>
+    <nav>
+        <div class="nav-gp-t">基础</div>
+        <a class="nav-l on" href="#tokens" onclick="mkOn(this)"><span class="ic">🎯</span>设计令牌</a>
+        <a class="nav-l" href="#color" onclick="mkOn(this)"><span class="ic">🎨</span>色彩系统</a>
+        <a class="nav-l" href="#typography" onclick="mkOn(this)"><span class="ic">🔤</span>字体排版</a>
+        <a class="nav-l" href="#spacing" onclick="mkOn(this)"><span class="ic">📐</span>间距与圆角</a>
+        <div class="nav-gp-t">组件</div>
+        <a class="nav-l" href="#comp-buttons" onclick="mkOn(this)"><span class="ic">🔘</span>按钮</a>
+        <a class="nav-l" href="#comp-inputs" onclick="mkOn(this)"><span class="ic">📝</span>输入框</a>
+        <a class="nav-l" href="#comp-tabs" onclick="mkOn(this)"><span class="ic">📑</span>Tab 导航</a>
+        <a class="nav-l" href="#comp-cards" onclick="mkOn(this)"><span class="ic">🃏</span>卡片</a>
+        <a class="nav-l" href="#comp-tags" onclick="mkOn(this)"><span class="ic">🏷️</span>标签 / 徽章</a>
+        <a class="nav-l" href="#comp-tables" onclick="mkOn(this)"><span class="ic">📊</span>数据表格</a>
+        <a class="nav-l" href="#comp-toggle" onclick="mkOn(this)"><span class="ic">🔀</span>开关与交互</a>
+        <a class="nav-l" href="#comp-toast" onclick="mkOn(this)"><span class="ic">🔔</span>提示 / Toast</a>
+        <div class="nav-gp-t">页面</div>
+        <a class="nav-l" href="#page-layout" onclick="mkOn(this)"><span class="ic">🖼️</span>整体布局</a>
+        <a class="nav-l" href="#page-header" onclick="mkOn(this)"><span class="ic">📌</span>顶栏</a>
+        <a class="nav-l" href="#page-chat" onclick="mkOn(this)"><span class="ic">💬</span>AI 对话</a>
+        <a class="nav-l" href="#page-camera" onclick="mkOn(this)"><span class="ic">📷</span>摄像头</a>
+        <a class="nav-l" href="#page-sensors" onclick="mkOn(this)"><span class="ic">📈</span>传感器</a>
+        <a class="nav-l" href="#page-memory" onclick="mkOn(this)"><span class="ic">💾</span>记忆回顾</a>
+        <a class="nav-l" href="#page-reminders" onclick="mkOn(this)"><span class="ic">📅</span>提醒管理</a>
+        <div class="nav-gp-t">规范</div>
+        <a class="nav-l" href="#motion" onclick="mkOn(this)"><span class="ic">✨</span>动效</a>
+        <a class="nav-l" href="#responsive" onclick="mkOn(this)"><span class="ic">📱</span>响应式</a>
+        <a class="nav-l" href="#states" onclick="mkOn(this)"><span class="ic">🔄</span>状态设计</a>
+        <a class="nav-l" href="#a11y" onclick="mkOn(this)"><span class="ic">♿</span>无障碍</a>
+    </nav>
+</aside>
+
+<!-- ══════════════════ MAIN CONTENT ══════════════════ -->
+<main class="main">
+
+<!-- ═══════════════════════════════════════════════════════
+     1. DESIGN TOKENS 总览
+     ═══════════════════════════════════════════════════════ -->
+<section class="sec" id="tokens">
+    <div class="sec-hd">
+        <div class="badge" style="background:var(--accent-s)">🎯</div>
+        <div><h2>设计令牌</h2><div class="sub">Design Tokens — 一切视觉决策的源头</div></div>
+    </div>
+    <p>本项目采用 CSS Custom Properties 管理全部视觉变量。所有组件仅引用令牌（<code>--token-name</code>），禁止硬编码色值、字号、间距。修改一处变量即全局生效。</p>
+
+    <h3>令牌架构</h3>
+    <div class="tw">
+        <table>
+            <thead><tr><th>层级</th><th>用途</th><th>示例</th></tr></thead>
+            <tbody>
+                <tr><td><span class="tag t-b">Primitive</span></td><td>基础色值、尺寸</td><td><code>#6e8cff</code>、<code>14px</code></td></tr>
+                <tr><td><span class="tag t-g">Semantic</span></td><td>语义化用途映射</td><td><code>--accent</code>、<code>--text-2</code></td></tr>
+                <tr><td><span class="tag t-p">Component</span></td><td>组件级覆盖</td><td><code>--btn-padding</code>、<code>--card-radius</code></td></tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="co co-info"><span class="coi">💡</span><div>当前版本使用 Semantic 层，组件层在具体实现时按需定义。所有变量定义在 <code>:root</code> 中，支持后续扩展暗/亮主题切换。</div></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     2. COLOR SYSTEM
+     ═══════════════════════════════════════════════════════ -->
+<section class="sec" id="color">
+    <div class="sec-hd">
+        <div class="badge" style="background:var(--purple-s)">🎨</div>
+        <div><h2>色彩系统</h2><div class="sub">Color System</div></div>
+    </div>
+
+    <h3>表面层级</h3>
+    <p>深色主题使用三级表面深度建立层级关系，数值越低越深。与文字色配合确保 WCAG AA 对比度。</p>
+    <div class="swatch-grid">
+        <div class="swatch">
+            <div class="swatch-color" style="background:#0b0d13;border:1px solid #22253a">#0b0d13</div>
+            <div class="swatch-info"><div class="name">--bg</div><div class="val">页面底层背景</div></div>
+        </div>
+        <div class="swatch">
+            <div class="swatch-color" style="background:#12141d">#12141d</div>
+            <div class="swatch-info"><div class="name">--surface</div><div class="val">卡片、面板、侧边栏</div></div>
+        </div>
+        <div class="swatch">
+            <div class="swatch-color" style="background:#181b27">#181b27</div>
+            <div class="swatch-info"><div class="name">--surface-2</div><div class="val">输入框、hover 态底色</div></div>
+        </div>
+        <div class="swatch">
+            <div class="swatch-color" style="background:#1e2132">#1e2132</div>
+            <div class="swatch-info"><div class="name">--surface-3</div><div class="val">按钮、次级容器</div></div>
+        </div>
+        <div class="swatch">
+            <div class="swatch-color" style="background:#22253a">#22253a</div>
+            <div class="swatch-info"><div class="name">--border</div><div class="val">默认边框</div></div>
+        </div>
+    </div>
+
+    <h3>文字色阶</h3>
+    <div class="swatch-grid">
+        <div class="swatch">
+            <div class="swatch-color" style="background:#0b0d13;color:#e4e4ec">#e4e4ec</div>
+            <div class="swatch-info"><div class="name">--text</div><div class="val">主文字 · 对比度 13.2:1</div></div>
+        </div>
+        <div class="swatch">
+            <div class="swatch-color" style="background:#0b0d13;color:#898da4">#898da4</div>
+            <div class="swatch-info"><div class="name">--text-2</div><div class="val">次文字 · 对比度 5.1:1</div></div>
+        </div>
+        <div class="swatch">
+            <div class="swatch-color" style="background:#0b0d13;color:#5c6080">#5c6080</div>
+            <div class="swatch-info"><div class="name">--text-3</div><div class="val">辅助 / placeholder · 3.1:1</div></div>
+        </div>
+    </div>
+    <div class="co co-warn"><span class="coi">⚠️</span><div><code>--text-3</code> 仅用于装饰性文字（placeholder、时间戳），不可用于承载信息的关键文字。需要 4.5:1 以上对比度的场景必须使用 <code>--text-2</code> 或更高。</div></div>
+
+    <h3>语义色</h3>
+    <p>每种语义色包含：主色（文字/图标）和背景色（bg-tint），均以 <code>rgba</code> 实现半透明底色，确保在任何表面层级上颜色一致。</p>
+    <div class="swatch-grid">
+        <div class="swatch">
+            <div class="swatch-color" style="background:rgba(110,140,255,.10);color:#6e8cff">Accent</div>
+            <div class="swatch-info"><div class="name">--accent</div><div class="val">主操作、选中态、链接</div></div>
+        </div>
+        <div class="swatch">
+            <div class="swatch-color" style="background:rgba(61,214,140,.10);color:#3dd68c">Success</div>
+            <div class="swatch-info"><div class="name">--green</div><div class="val">成功、正常、在线</div></div>
+        </div>
+        <div class="swatch">
+            <div class="swatch-color" style="background:rgba(245,158,66,.10);color:#f59e42">Warning</div>
+            <div class="swatch-info"><div class="name">--orange</div><div class="val">警告、待处理、中等</div></div>
+        </div>
+        <div class="swatch">
+            <div class="swatch-color" style="background:rgba(240,113,113,.10);color:#f07171">Error</div>
+            <div class="swatch-info"><div class="name">--red</div><div class="val">错误、警报、高温</div></div>
+        </div>
+        <div class="swatch">
+            <div class="swatch-color" style="background:rgba(34,211,238,.10);color:#22d3ee">Info</div>
+            <div class="swatch-info"><div class="name">--cyan</div><div class="val">信息、传感器、输入</div></div>
+        </div>
+        <div class="swatch">
+            <div class="swatch-color" style="background:rgba(167,139,250,.10);color:#a78bfa">Purple</div>
+            <div class="swatch-info"><div class="name">--purple</div><div class="val">记忆、AI、高级功能</div></div>
+        </div>
+        <div class="swatch">
+            <div class="swatch-color" style="background:rgba(250,204,21,.10);color:#facc15">Yellow</div>
+            <div class="swatch-info"><div class="name">--yellow</div><div class="val">提醒、进化、经验值</div></div>
+        </div>
+    </div>
+
+    <h3>情绪色映射（桌宠专用）</h3>
+    <p>桌宠的 7 种情绪在 UI 中使用独立色带，与语义色部分重叠但语义独立。</p>
+    <div class="swatch-grid">
+        <div class="swatch">
+            <div class="swatch-color" style="background:rgba(250,204,21,.12);color:#facc15">😊 开心</div>
+            <div class="swatch-info"><div class="name">happy</div><div class="val">#facc15 · 常亮</div></div>
+        </div>
+        <div class="swatch">
+            <div class="swatch-color" style="background:rgba(34,211,238,.12);color:#22d3ee">🤔 好奇</div>
+            <div class="swatch-info"><div class="name">curious</div><div class="val">#22d3ee · 慢闪</div></div>
+        </div>
+        <div class="swatch">
+            <div class="swatch-color" style="background:rgba(167,139,250,.12);color:#a78bfa">😴 困倦</div>
+            <div class="swatch-info"><div class="name">sleepy</div><div class="val">#a78bfa · 微弱</div></div>
+        </div>
+        <div class="swatch">
+            <div class="swatch-color" style="background:rgba(240,113,113,.12);color:#f07171">⚠️ 警觉</div>
+            <div class="swatch-info"><div class="name">alert</div><div class="val">#f07171 · 闪烁</div></div>
+        </div>
+        <div class="swatch">
+            <div class="swatch-color" style="background:rgba(61,214,140,.12);color:#3dd68c">💬 健谈</div>
+            <div class="swatch-info"><div class="name">chatty</div><div class="val">#3dd68c · 脉冲</div></div>
+        </div>
+        <div class="swatch">
+            <div class="swatch-color" style="background:rgba(110,140,255,.12);color:#6e8cff">😌 平静</div>
+            <div class="swatch-info"><div class="name">calm</div><div class="val">#6e8cff · 柔光</div></div>
+        </div>
+        <div class="swatch">
+            <div class="swatch-color" style="background:rgba(99,102,241,.12);color:#6366f1">🥺 孤独</div>
+            <div class="swatch-info"><div class="name">lonely</div><div class="val">#6366f1 · 呼吸</div></div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     3. TYPOGRAPHY
+     ═══════════════════════════════════════════════════════ -->
+<section class="sec" id="typography">
+    <div class="sec-hd">
+        <div class="badge" style="background:var(--orange-s)">🔤</div>
+        <div><h2>字体排版</h2><div class="sub">Typography Scale</div></div>
+    </div>
+
+    <h3>字体选择</h3>
+    <div class="tw">
+        <table>
+            <thead><tr><th>用途</th><th>字体栈</th><th>回退</th></tr></thead>
+            <tbody>
+                <tr><td><span class="tag t-b">正文 / UI</span></td><td><code>-apple-system, BlinkMacSystemFont, 'Segoe UI'</code></td><td>PingFang SC, Microsoft YaHei, sans-serif</td></tr>
+                <tr><td><span class="tag t-p">代码 / 数据</span></td><td><code>'JetBrains Mono', 'Fira Code'</code></td><td>Consolas, monospace</td></tr>
+            </tbody>
+        </table>
+    </div>
+    <p>系统字体栈优先，零网络开销，原生渲染。中文回退链覆盖 macOS、Windows、Linux。</p>
+
+    <h3>字号阶梯</h3>
+    <p>固定 rem 尺度（产品 UI 不用 fluid type），步长比 1.15:1，紧凑但有层次。</p>
+    <div class="tw">
+        <table>
+            <thead><tr><th>Token</th><th>尺寸</th><th>用途</th><th>示例</th></tr></thead>
+            <tbody>
+                <tr><td><code>--text-xs</code></td><td>11px</td><td>标签内文字、时间戳</td><td style="font-size:11px;color:var(--text-2)">3 分钟前</td></tr>
+                <tr><td><code>--text-sm</code></td><td>12.5px</td><td>辅助文字、表头、注释</td><td style="font-size:12.5px;color:var(--text-2)">传感器状态正常</td></tr>
+                <tr><td><code>--text-base</code></td><td>13.5px</td><td>正文、列表项、表格</td><td style="font-size:13.5px">今日温度 25.3°C</td></tr>
+                <tr><td><code>--text-md</code></td><td>14.5px</td><td>卡片标题、表单标签</td><td style="font-size:14.5px;font-weight:600">实时摄像头</td></tr>
+                <tr><td><code>--text-lg</code></td><td>16.5px</td><td>区域标题、小组标题</td><td style="font-size:16.5px;font-weight:600">环境感知</td></tr>
+                <tr><td><code>--text-xl</code></td><td>19px</td><td>章节标题</td><td style="font-size:19px;font-weight:700">AI 对话</td></tr>
+                <tr><td><code>--text-2xl</code></td><td>23px</td><td>页面主标题</td><td style="font-size:23px;font-weight:700;letter-spacing:-.5px">项目概述</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h3>字重</h3>
+    <div class="preview-box">
+        <span style="font-weight:400;font-size:14px">Regular 400 — 正文</span>
+        <span style="font-weight:500;font-size:14px">Medium 500 — 按钮、标签</span>
+        <span style="font-weight:600;font-size:14px">Semibold 600 — 标题、选中</span>
+        <span style="font-weight:700;font-size:14px">Bold 700 — 章节标题</span>
+        <span style="font-weight:800;font-size:14px">Extrabold 800 — 数据大字</span>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     4. SPACING & RADIUS
+     ═══════════════════════════════════════════════════════ -->
+<section class="sec" id="spacing">
+    <div class="sec-hd">
+        <div class="badge" style="background:var(--green-s)">📐</div>
+        <div><h2>间距与圆角</h2><div class="sub">Spacing & Radius</div></div>
+    </div>
+
+    <h3>间距尺度（4px 基数）</h3>
+    <div class="preview-box col">
+        <div style="display:flex;align-items:center;gap:14px"><div style="width:4px;height:20px;background:var(--accent);border-radius:2px"></div><code>--sp-1: 4px</code><span style="color:var(--text-3);font-size:12px">内联元素微调</span></div>
+        <div style="display:flex;align-items:center;gap:14px"><div style="width:8px;height:20px;background:var(--accent);border-radius:2px"></div><code>--sp-2: 8px</code><span style="color:var(--text-3);font-size:12px">紧凑间距、图标与文字</span></div>
+        <div style="display:flex;align-items:center;gap:14px"><div style="width:12px;height:20px;background:var(--accent);border-radius:2px"></div><code>--sp-3: 12px</code><span style="color:var(--text-3);font-size:12px">卡片内边距、元素间距</span></div>
+        <div style="display:flex;align-items:center;gap:14px"><div style="width:16px;height:20px;background:var(--accent);border-radius:2px"></div><code>--sp-4: 16px</code><span style="color:var(--text-3);font-size:12px">组件内边距默认值</span></div>
+        <div style="display:flex;align-items:center;gap:14px"><div style="width:20px;height:20px;background:var(--accent);border-radius:2px"></div><code>--sp-5: 20px</code><span style="color:var(--text-3);font-size:12px">卡片外边距、区域分隔</span></div>
+        <div style="display:flex;align-items:center;gap:14px"><div style="width:24px;height:20px;background:var(--accent);border-radius:2px"></div><code>--sp-6: 24px</code><span style="color:var(--text-3);font-size:12px">面板内边距、Tab 内容区</span></div>
+        <div style="display:flex;align-items:center;gap:14px"><div style="width:32px;height:20px;background:var(--accent);border-radius:2px"></div><code>--sp-8: 32px</code><span style="color:var(--text-3);font-size:12px">区块间距、标题上方留白</span></div>
+        <div style="display:flex;align-items:center;gap:14px"><div style="width:40px;height:20px;background:var(--accent);border-radius:2px"></div><code>--sp-10: 40px</code><span style="color:var(--text-3);font-size:12px">章节间距、页面上下留白</span></div>
+    </div>
+
+    <h3>圆角尺度</h3>
+    <div class="preview-box">
+        <div style="width:48px;height:48px;background:var(--surface-3);border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text-3)">6px</div>
+        <div style="width:48px;height:48px;background:var(--surface-3);border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text-3)">8px</div>
+        <div style="width:48px;height:48px;background:var(--surface-3);border:1px solid var(--border);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text-3)">12px</div>
+        <div style="width:48px;height:48px;background:var(--surface-3);border:1px solid var(--border);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text-3)">14px</div>
+        <div style="width:64px;height:32px;background:var(--surface-3);border:1px solid var(--border);border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text-3)">full</div>
+    </div>
+    <div class="tw">
+        <table>
+            <thead><tr><th>Token</th><th>值</th><th>用途</th></tr></thead>
+            <tbody>
+                <tr><td><code>--r-sm</code></td><td>6px</td><td>标签、小按钮</td></tr>
+                <tr><td><code>--r-md</code></td><td>8px</td><td>输入框、图标按钮</td></tr>
+                <tr><td><code>--r-lg</code></td><td>12px</td><td>聊天气泡、消息卡片</td></tr>
+                <tr><td><code>--r-xl</code></td><td>14px</td><td>面板、大卡片、代码块</td></tr>
+                <tr><td><code>--r-full</code></td><td>999px</td><td>胶囊、Tag、圆形按钮</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     5. BUTTONS
+     ═══════════════════════════════════════════════════════ -->
+<section class="sec" id="comp-buttons">
+    <div class="sec-hd">
+        <div class="badge" style="background:var(--accent-s)">🔘</div>
+        <div><h2>按钮</h2><div class="sub">Button Components</div></div>
+    </div>
+
+    <h3>变体</h3>
+    <div class="preview-box">
+        <button class="btn btn-primary">发送消息</button>
+        <button class="btn btn-secondary">保存快照</button>
+        <button class="btn btn-ghost">取消</button>
+        <button class="btn btn-danger btn-sm">删除提醒</button>
+        <button class="btn-icon">⚙</button>
+        <button class="btn-icon">📷</button>
+    </div>
+    <div class="tw">
+        <table>
+            <thead><tr><th>变体</th><th>背景</th><th>文字色</th><th>用途</th></tr></thead>
+            <tbody>
+                <tr><td><span class="tag t-b">Primary</span></td><td><code>--accent</code></td><td>#fff</td><td>页面主操作：发送、保存、确认</td></tr>
+                <tr><td><span class="tag t-g">Secondary</span></td><td><code>--surface-3</code> + border</td><td><code>--text</code></td><td>次级操作：保存快照、导出</td></tr>
+                <tr><td><span class="tag t-p">Ghost</span></td><td>transparent</td><td><code>--text-2</code></td><td>内联操作：取消、返回</td></tr>
+                <tr><td><span class="tag t-r">Danger</span></td><td><code>--red-s</code></td><td><code>--red</code></td><td>破坏性操作：删除、清空</td></tr>
+                <tr><td><span class="tag t-c">Icon</span></td><td><code>--surface-3</code> + border</td><td><code>--text-2</code></td><td>工具栏图标按钮</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h3>交互状态</h3>
+    <div class="tw">
+        <table>
+            <thead><tr><th>状态</th><th>变化</th></tr></thead>
+            <tbody>
+                <tr><td>Default</td><td>如令牌定义</td></tr>
+                <tr><td>Hover</td><td>Primary 亮度 +8%，Secondary 边框变亮，Ghost 出现 accent 底色</td></tr>
+                <tr><td>Focus</td><td><code>box-shadow: 0 0 0 3px rgba(110,140,255,.12)</code></td></tr>
+                <tr><td>Active</td><td>微缩 <code>scale(0.97)</code>，过渡 80ms</td></tr>
+                <tr><td>Disabled</td><td>opacity 0.4，<code>pointer-events: none</code></td></tr>
+                <tr><td>Loading</td><td>文字替换为 spinner，宽度不变</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h3>尺寸</h3>
+    <div class="preview-box">
+        <button class="btn btn-primary btn-sm" style="padding:5px 10px;font-size:12px">Small</button>
+        <button class="btn btn-primary">Default (8px 16px)</button>
+        <button class="btn btn-primary" style="padding:11px 22px;font-size:14.5px">Large</button>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     6. INPUTS
+     ═══════════════════════════════════════════════════════ -->
+<section class="sec" id="comp-inputs">
+    <div class="sec-hd">
+        <div class="badge" style="background:var(--cyan-s)">📝</div>
+        <div><h2>输入框</h2><div class="sub">Input Components</div></div>
+    </div>
+
+    <h3>文本输入</h3>
+    <div class="preview-box col" style="max-width:480px">
+        <input class="input-demo" type="text" placeholder="输入消息...">
+        <input class="input-demo" type="text" value="小派" style="border-color:var(--accent);box-shadow:0 0 0 3px rgba(110,140,255,.12)">
+        <input class="input-demo" type="text" placeholder="搜索记忆..." disabled style="opacity:.4">
+    </div>
+
+    <h3>聊天输入栏</h3>
+    <p>聊天 Tab 底部的复合输入组件：输入框 + 语音按钮 + 发送按钮。</p>
+    <div class="preview-box" style="max-width:560px">
+        <div style="display:flex;gap:8px;width:100%;align-items:center;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg)">
+            <button class="btn-icon" style="flex-shrink:0">🎤</button>
+            <input class="input-demo" type="text" placeholder="和小派聊天..." style="flex:1;border:none;background:transparent;padding:6px 0">
+            <button class="btn btn-primary btn-sm" style="flex-shrink:0">发送</button>
+        </div>
+    </div>
+
+    <h3>搜索框</h3>
+    <div class="preview-box" style="max-width:380px">
+        <div style="display:flex;gap:6px;align-items:center;padding:8px 14px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-md);width:100%">
+            <span style="color:var(--text-3);font-size:14px">🔍</span>
+            <input class="input-demo" type="text" placeholder="语义搜索记忆..." style="border:none;background:transparent;padding:4px 0;flex:1">
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     7. TAB NAVIGATION
+     ═══════════════════════════════════════════════════════ -->
+<section class="sec" id="comp-tabs">
+    <div class="sec-hd">
+        <div class="badge" style="background:var(--accent-s)">📑</div>
+        <div><h2>Tab 导航</h2><div class="sub">Tab Navigation — 全局主导航</div></div>
+    </div>
+
+    <h3>PC 端 Tab 栏</h3>
+    <div class="preview-box col">
+        <div style="display:flex;gap:4px;padding:8px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg)">
+            <button style="padding:8px 18px;border-radius:var(--r-md);background:var(--accent-s);border:none;color:var(--accent);font-size:13.5px;font-weight:600;cursor:pointer;font-family:var(--font)">🤖 AI 对话</button>
+            <button style="padding:8px 18px;border-radius:var(--r-md);background:transparent;border:none;color:var(--text-2);font-size:13.5px;font-weight:500;cursor:pointer;font-family:var(--font)">📹 摄像头</button>
+            <button style="padding:8px 18px;border-radius:var(--r-md);background:transparent;border:none;color:var(--text-2);font-size:13.5px;font-weight:500;cursor:pointer;font-family:var(--font)">📈 传感器</button>
+            <button style="padding:8px 18px;border-radius:var(--r-md);background:transparent;border:none;color:var(--text-2);font-size:13.5px;font-weight:500;cursor:pointer;font-family:var(--font)">💾 记忆回顾</button>
+            <button style="padding:8px 18px;border-radius:var(--r-md);background:transparent;border:none;color:var(--text-2);font-size:13.5px;font-weight:500;cursor:pointer;font-family:var(--font)">📅 提醒</button>
+        </div>
+    </div>
+    <div class="tw">
+        <table>
+            <thead><tr><th>状态</th><th>背景</th><th>文字色</th><th>字重</th></tr></thead>
+            <tbody>
+                <tr><td>Active</td><td><code>--accent-s</code></td><td><code>--accent</code></td><td>600</td></tr>
+                <tr><td>Default</td><td>transparent</td><td><code>--text-2</code></td><td>500</td></tr>
+                <tr><td>Hover</td><td><code>--surface-2</code></td><td><code>--text</code></td><td>500</td></tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="co co-info"><span class="coi">💡</span><div>Tab 栏 <code>position: sticky; top: 0;</code> 固定在页面顶部，滚动时始终可见。移动端 Tab 栏改为底部固定栏，使用图标 + 短文字，宽度平分。</div></div>
+
+    <h3>移动端 Tab 栏</h3>
+    <div class="preview-box col" style="max-width:375px">
+        <div style="display:flex;gap:0;padding:6px 4px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg)">
+            <div style="flex:1;text-align:center;padding:8px 0;border-radius:var(--r-md);background:var(--accent-s);color:var(--accent);font-size:11px;font-weight:600">
+                <div style="font-size:18px">🤖</div>对话
+            </div>
+            <div style="flex:1;text-align:center;padding:8px 0;color:var(--text-3);font-size:11px">
+                <div style="font-size:18px">📷</div>摄像头
+            </div>
+            <div style="flex:1;text-align:center;padding:8px 0;color:var(--text-3);font-size:11px">
+                <div style="font-size:18px">📈</div>传感器
+            </div>
+            <div style="flex:1;text-align:center;padding:8px 0;color:var(--text-3);font-size:11px">
+                <div style="font-size:18px">💾</div>记忆
+            </div>
+            <div style="flex:1;text-align:center;padding:8px 0;color:var(--text-3);font-size:11px">
+                <div style="font-size:18px">📅</div>提醒
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     8. CARDS
+     ═══════════════════════════════════════════════════════ -->
+<section class="sec" id="comp-cards">
+    <div class="sec-hd">
+        <div class="badge" style="background:var(--orange-s)">🃏</div>
+        <div><h2>卡片</h2><div class="sub">Card Components</div></div>
+    </div>
+
+    <h3>标准卡片</h3>
+    <div class="cg cg3">
+        <div class="card">
+            <div class="ci" style="background:var(--cyan-s)">👁️</div>
+            <h4>多模态感知</h4>
+            <p>温湿度、光照、语音、图像全方位环境感知</p>
+        </div>
+        <div class="card">
+            <div class="ci" style="background:var(--green-s)">💾</div>
+            <h4>三层记忆</h4>
+            <p>工作记忆 → 短期记忆 → 长期记忆，语义检索</p>
+        </div>
+        <div class="card">
+            <div class="ci" style="background:var(--orange-s)">📅</div>
+            <h4>提醒规划</h4>
+            <p>定时 / 周期 / 条件提醒，主动关怀</p>
+        </div>
+    </div>
+
+    <h3>卡片结构规范</h3>
+    <div class="tw">
+        <table>
+            <thead><tr><th>属性</th><th>值</th></tr></thead>
+            <tbody>
+                <tr><td>背景</td><td><code>--surface</code></td></tr>
+                <tr><td>边框</td><td>1px solid <code>--border</code></td></tr>
+                <tr><td>圆角</td><td><code>--r-xl</code> (14px)</td></tr>
+                <tr><td>内边距</td><td>20px</td></tr>
+                <tr><td>Hover 边框</td><td>rgba(110,140,255,.28)</td></tr>
+                <tr><td>图标容器</td><td>36×36px, r=9px, 语义色 bg-tint</td></tr>
+                <tr><td>标题</td><td><code>--text-md</code> / 600 / <code>--text</code></td></tr>
+                <tr><td>描述</td><td>13px / <code>--text-2</code> / line-height 1.6</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h3>数据统计卡片</h3>
+    <div class="preview-box">
+        <div class="stat-demo"><div class="sv" style="color:var(--accent)">9</div><div class="sl">硬件模块</div></div>
+        <div class="stat-demo"><div class="sv" style="color:var(--green)">5</div><div class="sl">软件子系统</div></div>
+        <div class="stat-demo"><div class="sv" style="color:var(--orange)">14+</div><div class="sl">API 接口</div></div>
+        <div class="stat-demo"><div class="sv" style="color:var(--purple)">Lv.3</div><div class="sl">桌宠等级</div></div>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     9. TAGS & BADGES
+     ═══════════════════════════════════════════════════════ -->
+<section class="sec" id="comp-tags">
+    <div class="sec-hd">
+        <div class="badge" style="background:var(--cyan-s)">🏷️</div>
+        <div><h2>标签与徽章</h2><div class="sub">Tags & Badges</div></div>
+    </div>
+
+    <h3>标签（Tag）</h3>
+    <div class="preview-box">
+        <span class="tag t-b">Agent</span>
+        <span class="tag t-g">LLM</span>
+        <span class="tag t-o">Web</span>
+        <span class="tag t-p">语音</span>
+        <span class="tag t-r">硬件</span>
+        <span class="tag t-c">输入</span>
+        <span class="tag t-y">传感器</span>
+    </div>
+
+    <h3>情绪徽章</h3>
+    <div class="preview-box">
+        <div class="mood-strip">
+            <span class="mood-chip" style="background:rgba(250,204,21,.08);border-color:rgba(250,204,21,.2);color:#facc15">😊 开心</span>
+            <span class="mood-chip" style="background:rgba(34,211,238,.08);border-color:rgba(34,211,238,.2);color:#22d3ee">🤔 好奇</span>
+            <span class="mood-chip" style="background:rgba(167,139,250,.08);border-color:rgba(167,139,250,.2);color:#a78bfa">😴 困倦</span>
+            <span class="mood-chip" style="background:rgba(240,113,113,.08);border-color:rgba(240,113,113,.2);color:#f07171">⚠️ 警觉</span>
+            <span class="mood-chip" style="background:rgba(61,214,140,.08);border-color:rgba(61,214,140,.2);color:#3dd68c">💬 健谈</span>
+            <span class="mood-chip" style="background:rgba(110,140,255,.08);border-color:rgba(110,140,255,.2);color:#6e8cff">😌 平静</span>
+            <span class="mood-chip" style="background:rgba(99,102,241,.08);border-color:rgba(99,102,241,.2);color:#6366f1">🥺 孤独</span>
+        </div>
+    </div>
+
+    <h3>状态指示</h3>
+    <div class="preview-box">
+        <span class="badge-demo" style="background:var(--green-s);color:var(--green)"><span class="badge-dot" style="background:var(--green)"></span>在线</span>
+        <span class="badge-demo" style="background:var(--orange-s);color:var(--orange)"><span class="badge-dot" style="background:var(--orange)"></span>忙碌</span>
+        <span class="badge-demo" style="background:var(--red-s);color:var(--red)"><span class="badge-dot" style="background:var(--red)"></span>离线</span>
+        <span class="badge-demo" style="background:var(--accent-s);color:var(--accent)"><span class="badge-dot" style="background:var(--accent)"></span>推理中</span>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     10. TABLES
+     ═══════════════════════════════════════════════════════ -->
+<section class="sec" id="comp-tables">
+    <div class="sec-hd">
+        <div class="badge" style="background:var(--green-s)">📊</div>
+        <div><h2>数据表格</h2><div class="sub">Data Tables</div></div>
+    </div>
+
+    <div class="tw">
+        <table>
+            <thead><tr><th>接口</th><th>方法</th><th>功能</th><th>状态</th></tr></thead>
+            <tbody>
+                <tr><td><code>/api/sensors</code></td><td><span class="tag t-g">GET</span></td><td>最新传感器数据</td><td><span class="badge-demo" style="background:var(--green-s);color:var(--green);font-size:11px"><span class="badge-dot" style="background:var(--green)"></span>可用</span></td></tr>
+                <tr><td><code>/api/chat</code></td><td><span class="tag t-b">POST</span></td><td>文字对话</td><td><span class="badge-demo" style="background:var(--green-s);color:var(--green);font-size:11px"><span class="badge-dot" style="background:var(--green)"></span>可用</span></td></tr>
+                <tr><td><code>/api/camera/stream</code></td><td><span class="tag t-g">GET</span></td><td>MJPEG 实时流</td><td><span class="badge-demo" style="background:var(--orange-s);color:var(--orange);font-size:11px"><span class="badge-dot" style="background:var(--orange)"></span>开发中</span></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h3>表格规范</h3>
+    <div class="tw">
+        <table>
+            <thead><tr><th>属性</th><th>值</th></tr></thead>
+            <tbody>
+                <tr><td>容器</td><td><code>--surface</code> 背景, <code>--border</code> 边框, <code>--r-xl</code> 圆角</td></tr>
+                <tr><td>表头</td><td>rgba(110,140,255,.05) 底色, 600 字重, <code>--text</code> 色</td></tr>
+                <tr><td>表体</td><td><code>--text-2</code> 色, <code>--text-base</code> 字号</td></tr>
+                <tr><td>行分隔</td><td>1px solid <code>--border</code>，末行无边框</td></tr>
+                <tr><td>Hover</td><td><code>--surface-2</code> 底色</td></tr>
+                <tr><td>水平溢出</td><td><code>overflow-x: auto</code> 允许横向滚动</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     11. TOGGLE & INTERACTIVE
+     ═══════════════════════════════════════════════════════ -->
+<section class="sec" id="comp-toggle">
+    <div class="sec-hd">
+        <div class="badge" style="background:var(--purple-s)">🔀</div>
+        <div><h2>开关与交互控件</h2><div class="sub">Toggle & Controls</div></div>
+    </div>
+
+    <h3>开关</h3>
+    <div class="preview-box">
+        <div style="display:flex;align-items:center;gap:10px">
+            <div class="toggle-track"><div class="toggle-thumb"></div></div>
+            <span style="font-size:13.5px;color:var(--text-2)">通知提醒</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+            <div class="toggle-track on"><div class="toggle-thumb"></div></div>
+            <span style="font-size:13.5px;color:var(--text-2)">语音播报</span>
+        </div>
+    </div>
+
+    <h3>时间范围选择器</h3>
+    <div class="preview-box">
+        <div style="display:flex;gap:4px;padding:3px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md)">
+            <button style="padding:5px 14px;border-radius:var(--r-sm);background:var(--accent-s);border:none;color:var(--accent);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font)">1h</button>
+            <button style="padding:5px 14px;border-radius:var(--r-sm);background:transparent;border:none;color:var(--text-3);font-size:12px;cursor:pointer;font-family:var(--font)">6h</button>
+            <button style="padding:5px 14px;border-radius:var(--r-sm);background:transparent;border:none;color:var(--text-3);font-size:12px;cursor:pointer;font-family:var(--font)">24h</button>
+            <button style="padding:5px 14px;border-radius:var(--r-sm);background:transparent;border:none;color:var(--text-3);font-size:12px;cursor:pointer;font-family:var(--font)">7d</button>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     12. TOAST / NOTIFICATION
+     ═══════════════════════════════════════════════════════ -->
+<section class="sec" id="comp-toast">
+    <div class="sec-hd">
+        <div class="badge" style="background:var(--yellow-s)">🔔</div>
+        <div><h2>提示与通知</h2><div class="sub">Toast & Alerts</div></div>
+    </div>
+
+    <h3>内联提示</h3>
+    <div class="preview-box col" style="gap:12px">
+        <div class="co co-info" style="margin:0"><span class="coi">💡</span><div>Whisper tiny 模型约 75MB，树莓派可本地运行。</div></div>
+        <div class="co co-warn" style="margin:0"><span class="coi">⚠️</span><div>DHT11 精度低于 DHT22，课设足够。</div></div>
+        <div class="co co-ok" style="margin:0"><span class="coi">✅</span><div>所有传感器数据采集正常。</div></div>
+    </div>
+
+    <h3>Toast 通知</h3>
+    <p>Toast 从页面右上角滑入，3 秒后自动消失，可手动关闭。用于操作反馈、提醒触发。</p>
+    <div class="preview-box col" style="gap:12px;max-width:380px;align-items:stretch">
+        <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--green);border-radius:var(--r-md);font-size:13.5px">
+            <span>✅</span><span style="color:var(--text)">快照已保存</span>
+            <span style="margin-left:auto;color:var(--text-3);cursor:pointer;font-size:16px">×</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:var(--r-md);font-size:13.5px">
+            <span>🔔</span><span style="color:var(--text)">小派提醒你喝水啦~</span>
+            <span style="margin-left:auto;color:var(--text-3);cursor:pointer;font-size:16px">×</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--red);border-radius:var(--r-md);font-size:13.5px">
+            <span>⚠️</span><span style="color:var(--text)">温度异常: 38.2°C</span>
+            <span style="margin-left:auto;color:var(--text-3);cursor:pointer;font-size:16px">×</span>
+        </div>
+    </div>
+    <div class="tw">
+        <table>
+            <thead><tr><th>属性</th><th>值</th></tr></thead>
+            <tbody>
+                <tr><td>位置</td><td>页面右上角，距顶 16px，距右 16px</td></tr>
+                <tr><td>宽度</td><td>320~380px，响应式自适应</td></tr>
+                <tr><td>入场</td><td>translateX(100%) → 0，250ms ease-out</td></tr>
+                <tr><td>退场</td><td>opacity 1 → 0，200ms，延迟后移除 DOM</td></tr>
+                <tr><td>层级</td><td><code>--z-toast</code> (50)</td></tr>
+                <tr><td>自动关闭</td><td>3000ms（可配置）</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     13. PAGE LAYOUT
+     ═══════════════════════════════════════════════════════ -->
+<section class="sec" id="page-layout">
+    <div class="sec-hd">
+        <div class="badge" style="background:var(--accent-s)">🖼️</div>
+        <div><h2>整体布局</h2><div class="sub">Page Layout Structure</div></div>
+    </div>
+
+    <h3>页面层次</h3>
+    <div class="wf">┌──────────────────────────────────────────────────────────────────────────┐
+│                          HEADER BAR                                      │
+│  🐾 AI 桌宠控制台  —  小派  😊开心  Lv.3                 [⚙ 设置]       │
+├──────────────────────────────────────────────────────────────────────────┤
+│                           TAB BAR (sticky)                               │
+│  [ 🤖 AI 对话 ] [ 📹 摄像头 ] [ 📈 传感器 ] [ 💾 记忆回顾 ] [ 📅 提醒 ] │
+├──────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│                        TAB CONTENT (scrollable)                          │
+│                        max-width: 980px                                  │
+│                        padding: 20px                                     │
+│                                                                          │
+└──────────────────────────────────────────────────────────────────────────┘</div>
+
+    <h3>布局规范</h3>
+    <div class="tw">
+        <table>
+            <thead><tr><th>区域</th><th>属性</th><th>值</th></tr></thead>
+            <tbody>
+                <tr><td>Header</td><td>高度</td><td>48px，背景 <code>--surface</code>，底边框 <code>--border</code></td></tr>
+                <tr><td>Tab Bar</td><td>定位</td><td>sticky top: 0，<code>--z-sticky</code> (10)</td></tr>
+                <tr><td>Tab Content</td><td>最大宽度</td><td>980px，水平居中</td></tr>
+                <tr><td>Tab Content</td><td>内边距</td><td>24px（移动端 16px）</td></tr>
+                <tr><td>页面底部</td><td>留白</td><td>64px（为移动端 Tab 栏让位）</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     14. HEADER
+     ═══════════════════════════════════════════════════════ -->
+<section class="sec" id="page-header">
+    <div class="sec-hd">
+        <div class="badge" style="background:var(--accent-s)">📌</div>
+        <div><h2>顶栏设计</h2><div class="sub">Header Bar</div></div>
+    </div>
+
+    <h3>结构</h3>
+    <div class="wf">┌──────────────────────────────────────────────────────────────────────────┐
+│  🐾  小派         😊 开心    Lv.3    ██████░░░ XP        [⚙]  [🔔]     │
+│  logo 名称       情绪状态   等级     经验条               设置  通知     │
+└──────────────────────────────────────────────────────────────────────────┘</div>
+    <div class="tw">
+        <table>
+            <thead><tr><th>元素</th><th>规格</th></tr></thead>
+            <tbody>
+                <tr><td>Logo + 名称</td><td>emoji 20px + 名称 <code>--text-lg</code> 700，靠左</td></tr>
+                <tr><td>情绪状态</td><td>情绪 emoji + 中文名，<code>--mood-xxx</code> 色</td></tr>
+                <tr><td>等级</td><td><code>Lv.N</code>，<code>--text-sm</code> 700，<code>--yellow</code></td></tr>
+                <tr><td>经验条</td><td>宽 80px 高 4px，背景 <code>--surface-3</code>，填充 <code>--yellow</code></td></tr>
+                <tr><td>操作按钮</td><td><code>btn-icon</code>，靠右</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     15. TAB 1: AI 对话
+     ═══════════════════════════════════════════════════════ -->
+<section class="sec" id="page-chat">
+    <div class="sec-hd">
+        <div class="badge" style="background:var(--green-s)">💬</div>
+        <div><h2>Tab 1: AI 对话</h2><div class="sub">Chat Interface</div></div>
+    </div>
+
+    <h3>布局（PC 端）</h3>
+    <div class="wf">┌──────────────────────────────────────────────────────────────────────────┐
+│                                                                          │
+│  ┌── 左侧: 对话区 (flex: 1) ────────────────┐ ┌── 右侧: 历史 (320px) ──┐│
+│  │                                            │ │                         ││
+│  │  ┌────────────────────────────────────┐   │ │  📋 会话记录            ││
+│  │  │  🐾 你好呀~今天温度 25°C 很舒服    │   │ │                         ││
+│  │  │     呢~                            │   │ │  2026-06-09             ││
+│  │  │                                    │   │ │  ├── 👤 你好            ││
+│  │  │           👤 帮我看看桌上有什么      │   │ │  └── 🐾 下午好~        ││
+│  │  │                                    │   │ │                         ││
+│  │  │  🐾 桌上有一杯咖啡和一本            │   │ │  2026-06-08             ││
+│  │  │     《CSAPP》呢~                   │   │ │  ├── 👤 讲个笑话        ││
+│  │  │                                    │   │ │  └── 🐾 从前有块派...   ││
+│  │  │           👤 讲个树莓派的笑话        │   │ │                         ││
+│  │  │                                    │   │ │  [搜索历史...]           ││
+│  │  └────────────────────────────────────┘   │ │  [加载更多]              ││
+│  │                                            │ │                         ││
+│  │  ┌────────────────────────────────────┐   │ └─────────────────────────┘│
+│  │  │ [🎤] [输入消息...]            [发送] │   │                            │
+│  │  └────────────────────────────────────┘   │                            │
+│  └────────────────────────────────────────────┘                            │
+└──────────────────────────────────────────────────────────────────────────┘</div>
+
+    <h3>对话区规范</h3>
+    <div class="tw">
+        <table>
+            <thead><tr><th>元素</th><th>规格</th></tr></thead>
+            <tbody>
+                <tr><td>布局</td><td>CSS Grid: <code>1fr 320px</code>，gap 16px</td></tr>
+                <tr><td>容器高度</td><td><code>calc(100vh - 120px)</code></td></tr>
+                <tr><td>气泡最大宽度</td><td>75%</td></tr>
+                <tr><td>桌宠气泡</td><td><code>--surface-3</code> 背景，<code>--r-lg</code> 圆角</td></tr>
+                <tr><td>用户气泡</td><td><code>--accent-s2</code> 背景，<code>--r-lg</code> 圆角，<code>margin-left: auto</code></td></tr>
+                <tr><td>头像</td><td>桌宠: 🐾 emoji；用户: 👤 emoji；24×24px</td></tr>
+                <tr><td>时间戳</td><td><code>--text-xs</code>，<code>--text-3</code>，气泡下方 4px</td></tr>
+                <tr><td>输入栏</td><td>底部固定，<code>--surface</code> 背景，顶边框 <code>--border</code></td></tr>
+                <tr><td>语音按钮</td><td>输入框左侧，<code>btn-icon</code>，录音中显示红色脉冲环</td></tr>
+                <tr><td>发送按钮</td><td><code>btn-primary btn-sm</code></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h3>历史侧栏规范</h3>
+    <div class="tw">
+        <table>
+            <thead><tr><th>元素</th><th>规格</th></tr></thead>
+            <tbody>
+                <tr><td>容器</td><td>宽 320px，<code>--surface</code> 背景，<code>--border</code> 边框，<code>--r-xl</code> 圆角</td></tr>
+                <tr><td>日期分组</td><td><code>--text-sm</code> 700，<code>--text-2</code></td></tr>
+                <tr><td>对话摘要</td><td>截取首句，<code>--text-base</code>，<code>--text-2</code></td></tr>
+                <tr><td>搜索框</td><td>顶部，搜索图标 + placeholder "搜索历史..."</td></tr>
+                <tr><td>移动端</td><td>隐藏侧栏，通过 "查看历史" 按钮展开全屏覆盖</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h3>流式回复指示</h3>
+    <div class="preview-box" style="max-width:320px">
+        <div class="msg-bubble msg-pet">
+            <span style="display:inline-flex;gap:3px;align-items:center">
+                <span style="width:5px;height:5px;background:var(--accent);border-radius:50%;animation:blink 1.4s infinite both"></span>
+                <span style="width:5px;height:5px;background:var(--accent);border-radius:50%;animation:blink 1.4s infinite both .2s"></span>
+                <span style="width:5px;height:5px;background:var(--accent);border-radius:50%;animation:blink 1.4s infinite both .4s"></span>
+            </span>
+        </div>
+    </div>
+    <style>
+        @keyframes blink { 0%,80%,100%{opacity:.2} 40%{opacity:1} }
+    </style>
+    <p>流式回复时，气泡内显示三点跳动动画。文字逐字追加，光标使用 <code>2px</code> 宽 <code>--accent</code> 竖线，80ms 闪烁。</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     16. TAB 2: 摄像头
+     ═══════════════════════════════════════════════════════ -->
+<section class="sec" id="page-camera">
+    <div class="sec-hd">
+        <div class="badge" style="background:var(--purple-s)">📷</div>
+        <div><h2>Tab 2: 摄像头</h2><div class="sub">Camera Feed & Analysis</div></div>
+    </div>
+
+    <h3>布局</h3>
+    <div class="wf">┌──────────────────────────────────────────────────────────────────────────┐
+│                                                                          │
+│  ┌── 实时画面 (flex: 1) ────────────────┐ ┌── 右侧面板 (300px) ────────┐ │
+│  │                                       │ │                             │ │
+│  │         [MJPEG 实时视频流]             │ │  📷 最近分析               │ │
+│  │                                       │ │                             │ │
+│  │          640 × 480                    │ │  14:30 人脸 (92%)          │ │
+│  │          16:9 自适应                   │ │  13:15 咖啡杯+书籍         │ │
+│  │                                       │ │  10:00 明亮室内            │ │
+│  │                                       │ │                             │ │
+│  │                                       │ │  ┌──────┐ ┌──────┐        │ │
+│  │                                       │ │  │快照#1│ │快照#2│        │ │
+│  │                                       │ │  └──────┘ └──────┘        │ │
+│  └───────────────────────────────────────┘ └─────────────────────────────┘ │
+│                                                                          │
+│  [📷 拍照分析]   [⏸ 暂停]   [📸 保存快照]   [🔊 场景播报]              │
+│                                                                          │
+└──────────────────────────────────────────────────────────────────────────┘</div>
+
+    <h3>视频流规范</h3>
+    <div class="tw">
+        <table>
+            <thead><tr><th>属性</th><th>值</th></tr></thead>
+            <tbody>
+                <tr><td>协议</td><td>MJPEG over HTTP (<code>multipart/x-mixed-replace</code>)</td></tr>
+                <tr><td>分辨率</td><td>640×480，容器内 <code>object-fit: contain</code></td></tr>
+                <tr><td>帧率</td><td>~20fps</td></tr>
+                <tr><td>容器</td><td><code>--surface</code> 背景，<code>--r-xl</code> 圆角，16:9 最小高度</td></tr>
+                <tr><td>加载态</td><td>骨架屏 + "正在连接摄像头..."</td></tr>
+                <tr><td>断线</td><td>遮罩层 + "连接断开" + 重试按钮</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h3>快照分析面板</h3>
+    <div class="tw">
+        <table>
+            <thead><tr><th>元素</th><th>规格</th></tr></thead>
+            <tbody>
+                <tr><td>时间线</td><td>倒序排列，时间 <code>--text-xs</code> <code>--accent</code>，内容 <code>--text-base</code></td></tr>
+                <tr><td>置信度</td><td>百分比标签，>80% 绿色，50~80% 橙色，<50% 灰色</td></tr>
+                <tr><td>缩略图</td><td>96×72px，<code>--r-md</code> 圆角，点击放大</td></tr>
+                <tr><td>快照总数</td><td>最多显示 20 条，"加载更多" 翻页</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     17. TAB 3: 传感器
+     ═══════════════════════════════════════════════════════ -->
+<section class="sec" id="page-sensors">
+    <div class="sec-hd">
+        <div class="badge" style="background:var(--orange-s)">📈</div>
+        <div><h2>Tab 3: 传感器</h2><div class="sub">Sensor Dashboard & Charts</div></div>
+    </div>
+
+    <h3>布局</h3>
+    <div class="wf">┌──────────────────────────────────────────────────────────────────────────┐
+│  实时数值条                                                              │
+│  ┌────────────────────────────────────────────────────────────────────┐  │
+│  │ 🌡️ 25.3°C   💧 62% RH   ☀️ 340 lx   😊 开心   Lv.3  ██████░░ │  │
+│  └────────────────────────────────────────────────────────────────────┘  │
+│                                                                          │
+│  24 小时温度趋势 (Chart.js 折线图，高度 200px)                            │
+│  ┌────────────────────────────────────────────────────────────────────┐  │
+│  │  30°┤        ╭─╮                   ╭──╮                           │  │
+│  │     │   ╭──╯   ╰──╮    ╭────╯    ╰──╮                 ──        │  │
+│  │  25°┤──╯           ╰──╯               ╰───                       │  │
+│  │  20°┤                                                             │  │
+│  │     └──┬────┬────┬────┬────┬────┬────┬──▶                       │  │
+│  │       0:00  3:00  6:00  9:00 12:00 15:00 18:00                   │  │
+│  └────────────────────────────────────────────────────────────────────┘  │
+│                                                                          │
+│  ┌── 湿度趋势 (高度 160px) ──────────┐ ┌── 情绪时间线 (高度 60px) ────┐ │
+│  │  80%┤   ╭──╮                       │ │ 😊😊😊🤔😊😴💬💬😊        │ │
+│  │  60%┤──╯  ╰──╮  ╭──              │ │ ───┬───┬───┬───▶            │ │
+│  │  40%┤         ╰──╯                │ │   6:00  12:00  18:00        │ │
+│  └────────────────────────────────────┘ └────────────────────────────────┘ │
+│                                                                          │
+│  时间范围: [1h] [6h] [24h] [7d]      导出: [CSV] [PNG]                  │
+└──────────────────────────────────────────────────────────────────────────┘</div>
+
+    <h3>实时数值条</h3>
+    <div class="preview-box">
+        <div style="display:flex;gap:20px;align-items:center;padding:12px 20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);flex-wrap:wrap;width:100%">
+            <span style="font-size:var(--text-base);color:var(--orange)">🌡️ <strong style="color:var(--text)">25.3°C</strong></span>
+            <span style="font-size:var(--text-base);color:var(--cyan)">💧 <strong style="color:var(--text)">62% RH</strong></span>
+            <span style="font-size:var(--text-base);color:var(--yellow)">☀️ <strong style="color:var(--text)">340 lx</strong></span>
+            <span style="font-size:var(--text-base);color:var(--green)">😊 <strong style="color:var(--text)">开心</strong></span>
+            <span style="margin-left:auto;font-size:var(--text-sm);color:var(--yellow)">Lv.3</span>
+        </div>
+    </div>
+
+    <h3>Chart.js 图表规范</h3>
+    <div class="tw">
+        <table>
+            <thead><tr><th>属性</th><th>温度 / 湿度</th><th>情绪时间线</th></tr></thead>
+            <tbody>
+                <tr><td>类型</td><td>Line (fill: true)</td><td>自定义 Canvas 色带</td></tr>
+                <tr><td>线条色</td><td>温度 <code>#f59e42</code>，湿度 <code>#22d3ee</code></td><td>moodColors 映射</td></tr>
+                <tr><td>填充色</td><td>rgba(color, 0.08)</td><td>纯色色块</td></tr>
+                <tr><td>tension</td><td>0.4 (平滑曲线)</td><td>N/A</td></tr>
+                <tr><td>pointRadius</td><td>0 (减少 DOM)</td><td>N/A</td></tr>
+                <tr><td>grid 颜色</td><td>rgba(255,255,255,0.04)</td><td>N/A</td></tr>
+                <tr><td>X 轴</td><td>type: time, HH:mm 格式</td><td>时间段标签</td></tr>
+                <tr><td>刷新</td><td>每 10 秒 WebSocket / 轮询</td><td>每次情绪变化</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h3>时间范围按钮组</h3>
+    <p>使用分段控件（Segmented Control）样式，选中项高亮。点击后请求后端聚合数据。</p>
+    <div class="preview-box">
+        <div style="display:flex;gap:4px;padding:3px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md)">
+            <button style="padding:6px 16px;border-radius:var(--r-sm);background:var(--accent-s);border:none;color:var(--accent);font-size:var(--text-sm);font-weight:600;cursor:pointer;font-family:var(--font)">1h</button>
+            <button style="padding:6px 16px;border-radius:var(--r-sm);background:transparent;border:none;color:var(--text-3);font-size:var(--text-sm);cursor:pointer;font-family:var(--font)">6h</button>
+            <button style="padding:6px 16px;border-radius:var(--r-sm);background:transparent;border:none;color:var(--text-3);font-size:var(--text-sm);cursor:pointer;font-family:var(--font)">24h</button>
+            <button style="padding:6px 16px;border-radius:var(--r-sm);background:transparent;border:none;color:var(--text-3);font-size:var(--text-sm);cursor:pointer;font-family:var(--font)">7d</button>
+        </div>
+        <button class="btn btn-secondary btn-sm">📥 导出 CSV</button>
+        <button class="btn btn-secondary btn-sm">📸 导出 PNG</button>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     18. TAB 4: 记忆回顾
+     ═══════════════════════════════════════════════════════ -->
+<section class="sec" id="page-memory">
+    <div class="sec-hd">
+        <div class="badge" style="background:var(--purple-s)">💾</div>
+        <div><h2>Tab 4: 记忆回顾</h2><div class="sub">Memory Review Interface</div></div>
+    </div>
+
+    <h3>布局</h3>
+    <div class="wf">┌──────────────────────────────────────────────────────────────────────────┐
+│  工具栏                                                                  │
+│  [🔍 语义搜索记忆...]    [筛选: 全部 ▾]    [排序: 时间 ▾]               │
+├──────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌── 长期记忆 ──────────────────────────┐ ┌── 短期摘要 ────────────────┐ │
+│  │                                       │ │                             │ │
+│  │  📌 重要记忆                          │ │  📝 每日回顾               │ │
+│  │                                       │ │                             │ │
+│  │  ❤️ 主人喜欢喝美式咖啡               │ │  📅 2026-06-09             │ │
+│  │     重要性: ████████░░ 8/10           │ │    交互 12 次              │ │
+│  │     6月1日 | 语义匹配: 95%            │ │    温度 23~26°C            │ │
+│  │                                       │ │    话题: 笑话、日常        │ │
+│  │  📖 主人在读《CSAPP》                │ │                             │ │
+│  │     重要性: ██████░░░░ 6/10           │ │  📅 2026-06-08             │ │
+│  │     6月5日                            │ │    交互 8 次               │ │
+│  │                                       │ │    话题: 天气              │ │
+│  │  🎉 第一次识别出主人的脸              │ │                             │ │
+│  │     重要性: █████████░ 9/10           │ │                             │ │
+│  │     5月28日                           │ │                             │ │
+│  └───────────────────────────────────────┘ └─────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────────────────┘</div>
+
+    <h3>记忆卡片规范</h3>
+    <div class="tw">
+        <table>
+            <thead><tr><th>元素</th><th>规格</th></tr></thead>
+            <tbody>
+                <tr><td>分类图标</td><td>emoji 16px，如 ❤️ 📖 🎉 💬</td></tr>
+                <tr><td>内容</td><td><code>--text-base</code>，<code>--text</code></td></tr>
+                <tr><td>重要性条</td><td>宽 80px 高 6px，<code>--r-full</code>，填充比例色: 7+ 绿色、4~7 橙色、&lt;4 灰色</td></tr>
+                <tr><td>元信息</td><td><code>--text-xs</code>，<code>--text-3</code>，日期 + 匹配度</td></tr>
+                <tr><td>短期摘要</td><td>日期标题 <code>--text-sm</code> 700，统计行 <code>--text-xs</code></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h3>搜索</h3>
+    <p>语义搜索使用 ChromaDB 向量检索，结果按相关度排序。搜索中显示骨架屏加载态，结果为空时显示 "没有找到相关记忆" 空状态。</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     19. TAB 5: 提醒管理
+     ═══════════════════════════════════════════════════════ -->
+<section class="sec" id="page-reminders">
+    <div class="sec-hd">
+        <div class="badge" style="background:var(--yellow-s)">📅</div>
+        <div><h2>Tab 5: 提醒管理</h2><div class="sub">Reminder Management</div></div>
+    </div>
+
+    <h3>布局</h3>
+    <div class="wf">┌──────────────────────────────────────────────────────────────────────────┐
+│  [+ 添加提醒]                                                           │
+│                                                                          │
+│  ⏰ 15:00        喝水                         [编辑] [×]                 │
+│  🔁 每天 08:00   早安                         [编辑] [×]                 │
+│  🌡️ >30°C       降温提醒                      [编辑] [×]                 │
+│  📷 18:00        拍照记录一天结束               [编辑] [×]                 │
+│                                                                          │
+│  ── 已过期 ──────────────────────────────────────                         │
+│  ✅ 昨天 10:00   已完成: 喝水                  [删除]                     │
+└──────────────────────────────────────────────────────────────────────────┘</div>
+
+    <h3>提醒条目规范</h3>
+    <div class="tw">
+        <table>
+            <thead><tr><th>元素</th><th>规格</th></tr></thead>
+            <tbody>
+                <tr><td>容器</td><td><code>--surface</code> 背景，<code>--border</code> 边框，<code>--r-lg</code> 圆角，padding 14px 18px</td></tr>
+                <tr><td>类型图标</td><td>16px emoji: ⏰ 定时 / 🔁 周期 / 🌡️ 条件 / 📷 拍照</td></tr>
+                <tr><td>时间/条件</td><td><code>--text-sm</code>，<code>--text-2</code></td></tr>
+                <tr><td>内容</td><td><code>--text-base</code>，<code>--text</code></td></tr>
+                <tr><td>操作</td><td>Ghost 按钮 "编辑" + Danger 图标 "×"，右对齐</td></tr>
+                <tr><td>已过期</td><td><code>--text-3</code>，内容加删除线，仅显示删除按钮</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h3>添加提醒弹窗</h3>
+    <p>使用内联展开表单（非 Modal），点击 "+ 添加提醒" 后在列表顶部展开一个表单区域：</p>
+    <div class="preview-box col" style="max-width:480px">
+        <div style="padding:20px;background:var(--surface);border:1px solid var(--accent-s2);border-radius:var(--r-xl);display:flex;flex-direction:column;gap:12px">
+            <div style="font-size:var(--text-md);font-weight:600;color:var(--text)">新建提醒</div>
+            <div style="display:flex;gap:8px">
+                <select style="padding:8px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-md);color:var(--text);font-size:var(--text-base);font-family:var(--font)">
+                    <option>⏰ 定时</option>
+                    <option>🔁 周期</option>
+                    <option>🌡️ 条件</option>
+                </select>
+                <input class="input-demo" type="time" style="flex:1">
+            </div>
+            <input class="input-demo" type="text" placeholder="提醒内容...">
+            <div style="display:flex;gap:8px;justify-content:flex-end">
+                <button class="btn btn-ghost btn-sm">取消</button>
+                <button class="btn btn-primary btn-sm">保存提醒</button>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     20. MOTION
+     ═══════════════════════════════════════════════════════ -->
+<section class="sec" id="motion">
+    <div class="sec-hd">
+        <div class="badge" style="background:var(--accent-s)">✨</div>
+        <div><h2>动效规范</h2><div class="sub">Motion & Animation</div></div>
+    </div>
+
+    <h3>动效令牌</h3>
+    <div class="tw">
+        <table>
+            <thead><tr><th>Token</th><th>值</th><th>用途</th></tr></thead>
+            <tbody>
+                <tr><td><code>--dur-fast</code></td><td>120ms</td><td>Hover 反馈、Focus ring</td></tr>
+                <tr><td><code>--dur-normal</code></td><td>200ms</td><td>Tab 切换、展开/折叠</td></tr>
+                <tr><td><code>--dur-slow</code></td><td>350ms</td><td>侧边栏、弹窗进出</td></tr>
+                <tr><td><code>--ease-out</code></td><td>cubic-bezier(.25, 1, .5, 1)</td><td>所有进入动画</td></tr>
+                <tr><td><code>--ease-spring</code></td><td>cubic-bezier(.34, 1.56, .64, 1)</td><td>强调反馈（按钮 active）</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h3>动效原则</h3>
+    <ul class="fl">
+        <li><span class="fn">1</span><div><h4>只动 compositor 属性</h4><p><code>transform</code> 和 <code>opacity</code> 仅此两项。不动画 width、height、margin、padding。</p></div></li>
+        <li><span class="fn">2</span><div><h4>动效传达状态</h4><p>Tab 切换、Toast 进出、骨架屏 shimmer。装饰性动画一律不加。</p></div></li>
+        <li><span class="fn">3</span><div><h4>尊重 prefers-reduced-motion</h4><p>所有动画在 <code>prefers-reduced-motion: reduce</code> 下设为 0ms 或隐藏。</p></div></li>
+    </ul>
+
+    <h3>特定动效</h3>
+    <div class="tw">
+        <table>
+            <thead><tr><th>场景</th><th>动画</th><th>时长</th></tr></thead>
+            <tbody>
+                <tr><td>Tab 切换</td><td>内容 fade in (opacity 0→1, translateY 8px→0)</td><td>200ms</td></tr>
+                <tr><td>Toast 入场</td><td>translateX(100%)→0</td><td>250ms</td></tr>
+                <tr><td>Toast 退场</td><td>opacity 1→0</td><td>200ms</td></tr>
+                <tr><td>Chat 气泡出现</td><td>opacity 0→1, translateY 6px→0</td><td>200ms</td></tr>
+                <tr><td>按钮 Hover</td><td>背景色过渡</td><td>120ms</td></tr>
+                <tr><td>按钮 Active</td><td>scale(0.97)</td><td>80ms</td></tr>
+                <tr><td>骨架屏</td><td>shimmer (background-position 动画)</td><td>1.5s infinite</td></tr>
+                <tr><td>流式打字光标</td><td>opacity blink</td><td>800ms infinite</td></tr>
+                <tr><td>语音录音中</td><td>红色脉冲环 (scale + opacity)</td><td>1.2s infinite</td></tr>
+            </tbody>
+        </table>
+    </div>
+    <pre><code>/* Reduced motion 全局覆盖 */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+    }
+}</code></pre>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     21. RESPONSIVE
+     ═══════════════════════════════════════════════════════ -->
+<section class="sec" id="responsive">
+    <div class="sec-hd">
+        <div class="badge" style="background:var(--green-s)">📱</div>
+        <div><h2>响应式设计</h2><div class="sub">Responsive Breakpoints</div></div>
+    </div>
+
+    <h3>断点</h3>
+    <div class="tw">
+        <table>
+            <thead><tr><th>断点</th><th>值</th><th>设备</th><th>布局变化</th></tr></thead>
+            <tbody>
+                <tr><td><span class="tag t-b">Desktop</span></td><td>> 1024px</td><td>PC、平板横屏</td><td>完整布局：Grid 双栏、侧栏可见</td></tr>
+                <tr><td><span class="tag t-o">Tablet</span></td><td>768~1024px</td><td>平板竖屏</td><td>缩小间距，卡片 2 列，聊天历史可折叠</td></tr>
+                <tr><td><span class="tag t-r">Mobile</span></td><td>< 768px</td><td>手机</td><td>单栏、Tab 栏底部固定、聊天历史隐藏</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h3>响应式规则</h3>
+    <ul class="fl">
+        <li><span class="fn">1</span><div><h4>聊天区</h4><p>PC: <code>1fr 320px</code> 双栏 → 移动端: 单栏，历史通过 "查看历史" 按钮全屏覆盖</p></div></li>
+        <li><span class="fn">2</span><div><h4>摄像头</h4><p>PC: 视频 + 分析面板双栏 → 移动端: 视频全宽，面板在下方</p></div></li>
+        <li><span class="fn">3</span><div><h4>传感器图表</h4><p>PC: 湿度 + 情绪并排 → 移动端: 垂直堆叠</p></div></li>
+        <li><span class="fn">4</span><div><h4>记忆</h4><p>PC: 长期 + 短期双栏 → 移动端: Tab 切换两个视图</p></div></li>
+        <li><span class="fn">5</span><div><h4>Tab 栏</h4><p>PC: 顶部横向 → 移动端: 底部固定，图标 + 短文字</p></div></li>
+    </ul>
+    <pre><code>/* 移动端关键覆盖 */
+@media (max-width: 768px) {
+    .chat-layout { grid-template-columns: 1fr; }
+    .chat-history { display: none; }  /* 通过按钮展开 */
+    .tab-bar {
+        position: fixed; bottom: 0; left: 0; right: 0;
+        z-index: var(--z-sticky);
+        background: var(--surface);
+        border-top: 1px solid var(--border);
+    }
+    .main-content { padding-bottom: 72px; }  /* 为底部 Tab 栏让位 */
+}</code></pre>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     22. STATES
+     ═══════════════════════════════════════════════════════ -->
+<section class="sec" id="states">
+    <div class="sec-hd">
+        <div class="badge" style="background:var(--orange-s)">🔄</div>
+        <div><h2>状态设计</h2><div class="sub">UI States</div></div>
+    </div>
+
+    <h3>加载态</h3>
+    <div class="preview-box col" style="max-width:380px">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);padding:20px;display:flex;flex-direction:column;gap:12px">
+            <div style="height:14px;width:60%;background:linear-gradient(90deg,var(--surface-2) 25%,var(--surface-3) 50%,var(--surface-2) 75%);background-size:200% 100%;border-radius:var(--r-sm);animation:shimmer 1.5s infinite"></div>
+            <div style="height:14px;width:90%;background:linear-gradient(90deg,var(--surface-2) 25%,var(--surface-3) 50%,var(--surface-2) 75%);background-size:200% 100%;border-radius:var(--r-sm);animation:shimmer 1.5s infinite .15s"></div>
+            <div style="height:14px;width:40%;background:linear-gradient(90deg,var(--surface-2) 25%,var(--surface-3) 50%,var(--surface-2) 75%);background-size:200% 100%;border-radius:var(--r-sm);animation:shimmer 1.5s infinite .3s"></div>
+        </div>
+    </div>
+    <style>@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }</style>
+
+    <h3>空状态</h3>
+    <div class="preview-box col" style="max-width:380px">
+        <div style="text-align:center;padding:40px 20px;color:var(--text-3)">
+            <div style="font-size:36px;margin-bottom:12px">📭</div>
+            <div style="font-size:var(--text-md);font-weight:600;color:var(--text-2);margin-bottom:6px">还没有记忆</div>
+            <div style="font-size:var(--text-sm);color:var(--text-3);margin-bottom:16px">和小派聊聊天，它就会开始记住你</div>
+            <button class="btn btn-primary btn-sm">开始对话</button>
+        </div>
+    </div>
+
+    <h3>错误态</h3>
+    <div class="preview-box col" style="max-width:380px">
+        <div style="text-align:center;padding:32px 20px">
+            <div style="font-size:32px;margin-bottom:10px">⚠️</div>
+            <div style="font-size:var(--text-md);font-weight:600;color:var(--text);margin-bottom:6px">传感器读取失败</div>
+            <div style="font-size:var(--text-sm);color:var(--text-3);margin-bottom:14px">DHT11 传感器无响应，请检查接线</div>
+            <button class="btn btn-secondary btn-sm">重试</button>
+        </div>
+    </div>
+
+    <h3>状态清单</h3>
+    <div class="tw">
+        <table>
+            <thead><tr><th>状态</th><th>表现</th><th>适用组件</th></tr></thead>
+            <tbody>
+                <tr><td>Default</td><td>正常显示</td><td>所有</td></tr>
+                <tr><td>Hover</td><td>边框/背景变化</td><td>按钮、卡片、Tab</td></tr>
+                <tr><td>Focus</td><td>蓝色 focus ring</td><td>输入框、按钮、Tab</td></tr>
+                <tr><td>Active / Pressed</td><td>scale(0.97)</td><td>按钮</td></tr>
+                <tr><td>Disabled</td><td>opacity 0.4, 无 pointer-events</td><td>按钮、输入框</td></tr>
+                <tr><td>Loading</td><td>骨架屏 / spinner</td><td>页面、图表、列表</td></tr>
+                <tr><td>Empty</td><td>图标 + 描述 + 操作引导</td><td>列表、搜索结果、记忆</td></tr>
+                <tr><td>Error</td><td>图标 + 错误描述 + 重试按钮</td><td>传感器、API、摄像头</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     23. ACCESSIBILITY
+     ═══════════════════════════════════════════════════════ -->
+<section class="sec" id="a11y">
+    <div class="sec-hd">
+        <div class="badge" style="background:var(--cyan-s)">♿</div>
+        <div><h2>无障碍</h2><div class="sub">Accessibility</div></div>
+    </div>
+
+    <h3>目标: WCAG 2.1 AA</h3>
+    <div class="tw">
+        <table>
+            <thead><tr><th>检查项</th><th>要求</th><th>当前状态</th></tr></thead>
+            <tbody>
+                <tr><td>文字对比度</td><td>正文 ≥ 4.5:1，大字 ≥ 3:1</td><td><span class="badge-demo" style="background:var(--green-s);color:var(--green);font-size:11px"><span class="badge-dot" style="background:var(--green)"></span>通过</span></td></tr>
+                <tr><td>Focus 可见</td><td>所有交互元素有可见 focus ring</td><td><span class="badge-demo" style="background:var(--green-s);color:var(--green);font-size:11px"><span class="badge-dot" style="background:var(--green)"></span>通过</span></td></tr>
+                <tr><td>键盘导航</td><td>Tab 键可遍历所有交互元素</td><td><span class="badge-demo" style="background:var(--green-s);color:var(--green);font-size:11px"><span class="badge-dot" style="background:var(--green)"></span>通过</span></td></tr>
+                <tr><td>语义化 HTML</td><td>header/nav/main/section/article</td><td><span class="badge-demo" style="background:var(--green-s);color:var(--green);font-size:11px"><span class="badge-dot" style="background:var(--green)"></span>通过</span></td></tr>
+                <tr><td>Reduced Motion</td><td>所有动画有 reduce 替代</td><td><span class="badge-demo" style="background:var(--green-s);color:var(--green);font-size:11px"><span class="badge-dot" style="background:var(--green)"></span>通过</span></td></tr>
+                <tr><td>屏幕阅读器</td><td>ARIA labels on 图标按钮、图表</td><td><span class="badge-demo" style="background:var(--orange-s);color:var(--orange);font-size:11px"><span class="badge-dot" style="background:var(--orange)"></span>需实现</span></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h3>ARIA 要点</h3>
+    <pre><code>&lt;!-- Tab 导航 --&gt;
+&lt;nav role="tablist" aria-label="功能导航"&gt;
+    &lt;button role="tab" aria-selected="true" aria-controls="panel-chat"&gt;AI 对话&lt;/button&gt;
+    &lt;button role="tab" aria-selected="false" aria-controls="panel-camera"&gt;摄像头&lt;/button&gt;
+&lt;/nav&gt;
+&lt;div role="tabpanel" id="panel-chat"&gt;...&lt;/div&gt;
+
+&lt;!-- 图标按钮 --&gt;
+&lt;button aria-label="设置"&gt;⚙&lt;/button&gt;
+&lt;button aria-label="发送消息"&gt;发送&lt;/button&gt;
+
+&lt;!-- 图表 --&gt;
+&lt;canvas aria-label="24小时温度趋势图，当前温度25.3度" role="img"&gt;&lt;/canvas&gt;
+
+&lt;!-- 情绪状态 --&gt;
+&lt;span role="status" aria-live="polite"&gt;小派现在很开心&lt;/span&gt;</code></pre>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     FOOTER
+     ═══════════════════════════════════════════════════════ -->
+<hr>
+<p style="text-align:center;color:var(--text-3);font-size:var(--text-sm);margin-top:28px">
+    🎨 AI 桌宠 Agent · UI 设计规范文档 v1.0 &nbsp;|&nbsp; 2026-06-10
+</p>
+
+</main>
+
+<!-- ── Sidebar Active Script ── -->
+<script>
+function mkOn(el){
+    document.querySelectorAll('.nav-l').forEach(l=>l.classList.remove('on'));
+    el.classList.add('on');
+}
+const obs = new IntersectionObserver(es=>{
+    es.forEach(e=>{
+        if(e.isIntersecting){
+            const id = e.target.id;
+            document.querySelectorAll('.nav-l').forEach(l=>
+                l.classList.toggle('on', l.getAttribute('href')==='#'+id)
+            );
+        }
+    });
+},{rootMargin:'-20% 0px -60% 0px'});
+document.querySelectorAll('.sec').forEach(s=>obs.observe(s));
+</script>
+</body>
+</html>

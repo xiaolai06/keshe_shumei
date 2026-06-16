@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智居物语 — 开发说明</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #f5f2ee; color: #3d3530; line-height: 1.8; padding: 40px; max-width: 900px; margin: 0 auto; }
+        h1 { font-size: 28px; margin-bottom: 8px; color: #3d3530; }
+        h2 { font-size: 20px; margin: 32px 0 12px; padding-bottom: 8px; border-bottom: 2px solid #d9d2c8; color: #5b8a9a; }
+        h3 { font-size: 16px; margin: 20px 0 8px; color: #3d3530; }
+        p { margin-bottom: 12px; color: #7a716a; }
+        .subtitle { color: #a89e95; font-size: 14px; margin-bottom: 32px; }
+        table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+        th, td { padding: 10px 14px; text-align: left; border: 1px solid #d9d2c8; font-size: 14px; }
+        th { background: #eee9e2; font-weight: 600; }
+        tr:hover { background: #eee9e240; }
+        .tag { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 12px; font-weight: 600; }
+        .tag-do { background: rgba(90,158,111,.1); color: #5a9e6f; }
+        .tag-wait { background: rgba(200,136,58,.1); color: #c8883a; }
+        .tag-next { background: rgba(91,138,154,.1); color: #5b8a9a; }
+        code { background: #eee9e2; padding: 2px 6px; border-radius: 4px; font-size: 13px; font-family: 'Consolas', monospace; }
+        pre { background: #3d3530; color: #e4e4ec; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 12px 0; font-size: 13px; }
+        ul, ol { padding-left: 24px; margin: 8px 0; }
+        li { margin-bottom: 6px; color: #7a716a; font-size: 14px; }
+        .section-status { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .status-done { background: #5a9e6f; }
+        .status-pending { background: #c8883a; }
+        .status-todo { background: #a89e95; }
+        .card { background: #fffdf9; border: 1px solid #d9d2c8; border-radius: 12px; padding: 20px; margin: 12px 0; }
+        .card-title { font-weight: 700; margin-bottom: 8px; font-size: 15px; }
+    </style>
+</head>
+<body>
+
+<h1>智居物语 — 开发说明</h1>
+<p class="subtitle">树莓派 AI 桌面宠物 · 项目进度与后续开发计划</p>
+
+<!-- ═══════════════════════════════ -->
+<h2>一、当前完成情况</h2>
+
+<table>
+    <thead>
+        <tr><th>模块</th><th>内容</th><th>状态</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>Web 前端</td><td>单页应用 5 Tab 布局：AI 对话、摄像头、传感器、记忆、提醒</td><td><span class="tag tag-do">已完成</span></td></tr>
+        <tr><td>UI 设计系统</td><td>暖色护眼主题、CSS Custom Properties 令牌、响应式布局</td><td><span class="tag tag-do">已完成</span></td></tr>
+        <tr><td>FastAPI 后端</td><td>应用框架 + 6 个路由模块（mock 数据）</td><td><span class="tag tag-do">已完成</span></td></tr>
+        <tr><td>项目文档</td><td>CLAUDE.md / PRODUCT.md / DESIGN.md / 开发说明</td><td><span class="tag tag-do">已完成</span></td></tr>
+        <tr><td>数据库 Schema</td><td>SQLite 7 张表 + WAL 模式</td><td><span class="tag tag-do">已完成</span></td></tr>
+        <tr><td>Agent 状态机</td><td>LangGraph 图结构 + PetState 定义 + Prompt 模板</td><td><span class="tag tag-wait">骨架</span></td></tr>
+        <tr><td>硬件驱动</td><td>传感器 / OLED / LED / 蜂鸣器 / 音响接口</td><td><span class="tag tag-wait">骨架</span></td></tr>
+        <tr><td>记忆系统</td><td>MemoryManager 接口 + schema.sql</td><td><span class="tag tag-wait">骨架</span></td></tr>
+    </tbody>
+</table>
+
+<!-- ═══════════════════════════════ -->
+<h2>二、开发计划（4 周）</h2>
+
+<h3>第 1 周 · 硬件驱动 + 基础架构</h3>
+<div class="card">
+    <div class="card-title">目标：让树莓派"活"起来</div>
+    <ol>
+        <li><strong>传感器驱动</strong> — DS18B20 温度 + DHT11 湿度 + BH1750 光照，读取真实数据替换 mock</li>
+        <li><strong>OLED 驱动</strong> — SSD1306 I2C 通信，实现表情切换 + 文字滚动</li>
+        <li><strong>RGB LED</strong> — GPIO PWM 控制，7 种情绪对应 7 种颜色</li>
+        <li><strong>蜂鸣器</strong> — PWM 提示音：提醒、欢迎、升级</li>
+        <li><strong>SQLite 初始化</strong> — 运行 schema.sql 建表，WAL 模式</li>
+        <li><strong>传感器轮询</strong> — APScheduler 每 5 秒采集，存入 sensor_readings 表</li>
+    </ol>
+    <p><strong>交付物：</strong>传感器数据可在终端打印，OLED 显示表情，LED 随温度变色</p>
+</div>
+
+<h3>第 2 周 · Agent + 记忆 + 对话</h3>
+<div class="card">
+    <div class="card-title">目标：能聊天、能记住</div>
+    <ol>
+        <li><strong>DeepSeek API 接入</strong> — OpenAI 兼容接口，system prompt + 多轮对话</li>
+        <li><strong>LangGraph 状态机</strong> — 实现 Perceive → Recall → Think → Decide → Act → Reflect 6 个节点</li>
+        <li><strong>工具集</strong> — set_reminder / search_memory / set_oled / set_led / play_buzzer / take_photo</li>
+        <li><strong>三层记忆</strong>
+            <ul>
+                <li>工作记忆：内存中最近 10 轮对话</li>
+                <li>短期记忆：SQLite 今日摘要，保留 7 天</li>
+                <li>长期记忆：SQLite + ChromaDB 向量检索</li>
+            </ul>
+        </li>
+        <li><strong>情绪计算</strong> — 4 维度加权（环境/交互/时间/异常），EMA 平滑，3 次一致才切换</li>
+        <li><strong>Web 对话接口</strong> — POST /chat + SSE 流式返回，前端实时显示打字效果</li>
+    </ol>
+    <p><strong>交付物：</strong>通过网页与桌宠对话，桌宠能记住偏好，情绪影响回复风格</p>
+</div>
+
+<h3>第 3 周 · 多模态 + Web 全功能</h3>
+<div class="card">
+    <div class="card-title">目标：看得见、听得到</div>
+    <ol>
+        <li><strong>摄像头</strong> — OpenCV 采集 + MJPEG 流推送到前端</li>
+        <li><strong>人脸识别</strong> — face_recognition 或 dlib，识别主人并触发记忆</li>
+        <li><strong>语音识别</strong> — INMP441 I2S 双麦采集 + Whisper tiny 本地推理</li>
+        <li><strong>语音合成</strong> — edge-tts 在线 TTS + USB 音响播放</li>
+        <li><strong>Web 全功能</strong> — 传感器图表接入真实数据 / 记忆搜索 / 提醒 CRUD / 摄像头拍照分析</li>
+        <li><strong>WebSocket</strong> — 传感器实时推送 + 情绪变化通知 + 新消息推送</li>
+    </ol>
+    <p><strong>交付物：</strong>摄像头画面实时显示，语音对话可用，前端数据全部为真实数据</p>
+</div>
+
+<h3>第 4 周 · 联调 + 优化 + 答辩</h3>
+<div class="card">
+    <div class="card-title">目标：稳定运行、准备展示</div>
+    <ol>
+        <li><strong>全模块联调</strong> — 传感器 → Agent → 硬件输出 → Web 展示完整链路</li>
+        <li><strong>OLED 表情素材</strong> — 制作 7 种情绪的 128x64 位图</li>
+        <li><strong>性能优化</strong> — Whisper 模型预加载 / Chart.js 数据节流 / 图片压缩</li>
+        <li><strong>异常处理</strong> — 传感器断线降级 / LLM 不可用时关键词匹配 / 摄像头断开重连</li>
+        <li><strong>答辩准备</strong> — 演示脚本 / 功能亮点梳理 / 常见问题准备</li>
+    </ol>
+    <p><strong>交付物：</strong>稳定运行的完整系统，可流畅演示全部功能</p>
+</div>
+
+<!-- ═══════════════════════════════ -->
+<h2>三、技术要点</h2>
+
+<h3>API 接口规范</h3>
+<pre>// 统一返回格式
+{
+    "success": true,
+    "data": { ... },
+    "error": null
+}
+
+// 对话接口（SSE 流式）
+POST /api/chat        → JSON 单次回复
+POST /api/chat/stream → SSE 流式 token
+
+// 传感器
+GET  /api/sensors           → 实时数据
+GET  /api/sensors/history   → 历史趋势
+
+// 摄像头
+GET  /api/camera/stream     → MJPEG 流
+POST /api/camera/capture    → 拍照分析
+
+// 记忆
+GET  /api/memory            → 长期记忆列表
+GET  /api/memory/search?q=  → 语义搜索
+
+// 提醒
+GET    /api/reminders       → 列表
+POST   /api/reminders       → 创建
+DELETE /api/reminders/{id}  → 删除</pre>
+
+<h3>数据库表</h3>
+<table>
+    <thead><tr><th>表名</th><th>用途</th><th>关键字段</th></tr></thead>
+    <tbody>
+        <tr><td>sensor_readings</td><td>传感器历史</td><td>temp, humidity, light, timestamp</td></tr>
+        <tr><td>interactions</td><td>对话记录</td><td>role, content, mood, timestamp</td></tr>
+        <tr><td>short_term_memory</td><td>短期摘要</td><td>summary, topics, date_range</td></tr>
+        <tr><td>long_term_memory</td><td>长期记忆</td><td>content, category, importance, embedding_id</td></tr>
+        <tr><td>reminders</td><td>提醒</td><td>type, cron_expr, content, enabled</td></tr>
+        <tr><td>mood_log</td><td>情绪日志</td><td>mood, dimensions (JSON), timestamp</td></tr>
+        <tr><td>evolution_state</td><td>成长状态</td><td>level, xp, total_interactions</td></tr>
+    </tbody>
+</table>
+
+<h3>情绪系统公式</h3>
+<pre>// 4 维度评分 (0-1)
+comfort  = f(temp, humidity)    // 环境舒适度
+interact = f(freq, sentiment)   // 交互情感
+time_f   = f(hour, idle_min)    // 时间因子
+anomaly  = f(sensor_err, face)  // 异常事件
+
+// 加权合并
+raw_mood = comfort×0.25 + interact×0.35 + time_f×0.25 + anomaly×0.15
+
+// 平滑：EMA(α=0.3) + 连续 3 次一致才切换 + 最短 30s 持续</pre>
+
+<h3>依赖安装</h3>
+<pre>pip install -r requirements.txt
+
+# 核心依赖
+fastapi, uvicorn, langgraph, langchain-core, openai
+whisper, pyaudio, edge-tts, chromadb
+RPi.GPIO, luma.oled, adafruit-dht, opencv-python-headless
+apscheduler, pydantic</pre>
+
+<!-- ═══════════════════════════════ -->
+<h2>四、文件结构速查</h2>
+<pre>pi-pet-agent/
+├── main.py              # 入口
+├── config.py            # 配置（引脚/API/参数）
+├── agent/               # Agent 核心
+│   ├── graph.py         #   LangGraph 状态机
+│   ├── state.py         #   PetState 定义
+│   ├── prompt.py        #   System Prompt
+│   └── nodes/           #   6 个节点实现
+├── tools/               # Agent 工具集
+├── memory/              # 记忆系统
+│   ├── manager.py       #   统一接口
+│   └── schema.sql       #   数据库建表
+├── perception/          # 感知层
+│   ├── sensors.py       #   温湿度光照
+│   ├── camera.py        #   OpenCV
+│   └── speech.py        #   Whisper
+├── hardware/            # 硬件驱动
+│   ├── oled.py / led.py / buzzer.py / speaker.py
+├── scheduler/           # APScheduler
+├── web/                 # Web 服务
+│   ├── app.py           #   FastAPI 应用
+│   ├── routers/         #   6 个 API 路由
+│   └── static/          #   前端 (HTML/CSS/JS)
+└── docs/                # 设计文档</pre>
+
+</body>
+</html>

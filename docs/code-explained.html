@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智居物语 — 代码结构说明</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #f5f2ee; color: #3d3530; line-height: 1.8; padding: 40px; max-width: 1000px; margin: 0 auto; }
+        h1 { font-size: 28px; margin-bottom: 6px; }
+        h2 { font-size: 20px; margin: 36px 0 12px; padding-bottom: 6px; border-bottom: 2px solid #d9d2c8; color: #5b8a9a; }
+        h3 { font-size: 16px; margin: 20px 0 8px; }
+        p, li { font-size: 14px; color: #7a716a; margin-bottom: 8px; }
+        .subtitle { color: #a89e95; font-size: 14px; margin-bottom: 32px; }
+        .file { background: #fffdf9; border: 1px solid #d9d2c8; border-radius: 10px; padding: 16px 20px; margin: 10px 0; }
+        .file-name { font-weight: 700; font-family: Consolas, monospace; font-size: 14px; color: #5b8a9a; margin-bottom: 6px; }
+        .file-desc { font-size: 13px; color: #7a716a; margin-bottom: 8px; }
+        .file-detail { font-size: 13px; color: #a89e95; padding-left: 16px; border-left: 3px solid #eee9e2; }
+        code { background: #eee9e2; padding: 1px 5px; border-radius: 4px; font-size: 12px; font-family: Consolas, monospace; }
+        pre { background: #3d3530; color: #e4e4ec; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 12px 0; font-size: 13px; }
+        .tag { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 11px; font-weight: 600; margin-right: 4px; }
+        .tag-done { background: rgba(90,158,111,.1); color: #5a9e6f; }
+        .tag-stub { background: rgba(200,136,58,.1); color: #c8883a; }
+        .tag-real { background: rgba(91,138,154,.1); color: #5b8a9a; }
+        .arch-diagram { background: #fffdf9; border: 1px solid #d9d2c8; border-radius: 10px; padding: 20px; margin: 12px 0; font-family: Consolas, monospace; font-size: 13px; line-height: 1.5; overflow-x: auto; color: #3d3530; }
+        .flow-step { display: inline-flex; align-items: center; gap: 6px; background: #eee9e2; padding: 4px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; color: #3d3530; margin: 4px 0; }
+        .flow-arrow { color: #a89e95; }
+        .layer { background: #fffdf9; border: 1px solid #d9d2c8; border-radius: 10px; padding: 16px; margin: 12px 0; }
+        .layer-title { font-weight: 700; font-size: 14px; margin-bottom: 6px; }
+    </style>
+</head>
+<body>
+
+<h1>智居物语 — 代码结构说明</h1>
+<p class="subtitle">树莓派 AI 桌面宠物 · 每个文件的功能与实现逻辑</p>
+
+<!-- ═══════════════════════════════ -->
+<h2>一、系统架构总览</h2>
+
+<div class="arch-diagram">
+┌──────────────────────────────────────────────────────┐
+│                  Web 前端 (HTML/CSS/JS)               │
+│   index.html · style.css · app.js (Chart.js)         │
+└────────────────────┬─────────────────────────────────┘
+                     │ HTTP / SSE / WebSocket
+┌────────────────────▼─────────────────────────────────┐
+│               FastAPI Web 服务 (app.py)               │
+│   chat · sensors · camera · memory · reminders       │
+├──────────────────────────────────────────────────────┤
+│           Agent 状态机 (graph.py / LangGraph)         │
+│   Perceive → Recall → Think → Decide → Act → Reflect │
+├──────────────┬───────────────┬───────────────────────┤
+│  记忆系统     │  感知层        │  硬件驱动              │
+│  SQLite +    │  传感器/摄像头/  │  OLED / LED /         │
+│  ChromaDB    │  语音识别       │  蜂鸣器 / 音响         │
+└──────────────┴───────────────┴───────────────────────┘
+</div>
+
+<div class="flow-step">传感器读取</div>
+<span class="flow-arrow"> → </span>
+<div class="flow-step">SQLite 存储</div>
+<span class="flow-arrow"> → </span>
+<div class="flow-step">FastAPI 查询</div>
+<span class="flow-arrow"> → </span>
+<div class="flow-step">前端图表展示</div>
+
+<!-- ═══════════════════════════════ -->
+<h2>二、入口与配置</h2>
+
+<div class="file">
+    <div class="file-name">main.py <span class="tag tag-real">真实逻辑</span></div>
+    <div class="file-desc">程序主入口，启动 Web 服务</div>
+    <div class="file-detail">
+        • 配置 logging（输出到终端 + 文件 <code>data/logs/system.log</code>）<br>
+        • 调用 <code>uvicorn.run("web.app:app")</code> 启动 FastAPI 服务<br>
+        • <code>reload=True</code> 开发时自动重载
+    </div>
+</div>
+
+<div class="file">
+    <div class="file-name">config.py <span class="tag tag-real">真实逻辑</span></div>
+    <div class="file-desc">全局配置常量，所有模块共用</div>
+    <div class="file-detail">
+        • <strong>路径</strong>：DATA_DIR / FACES_DIR / SNAPSHOTS_DIR / MODELS_DIR 等<br>
+        • <strong>LLM</strong>：DeepSeek API Key / Base URL / Model / Temperature<br>
+        • <strong>硬件引脚</strong>：DHT11(4) / LED_R(27) / LED_G(22) / LED_B(5) / Buzzer(18) 等<br>
+        • <strong>情绪系统</strong>：EMA α=0.3 / 连续 3 次才切换 / 最短 30s<br>
+        • <strong>记忆系统</strong>：工作记忆 10 轮 / 短期 7 天 / 向量检索 top 5<br>
+        • <strong>Web</strong>：host 0.0.0.0 / port 8000
+    </div>
+</div>
+
+<!-- ═══════════════════════════════ -->
+<h2>三、Web 服务层</h2>
+
+<div class="file">
+    <div class="file-name">web/app.py <span class="tag tag-real">真实逻辑</span></div>
+    <div class="file-desc">FastAPI 应用创建 + 生命周期管理</div>
+    <div class="file-detail">
+        • <strong>lifespan 启动</strong>：初始化 SQLite 数据库 → 启动传感器轮询后台线程（每 10 秒）<br>
+        • <strong>lifespan 关闭</strong>：设置停止事件 → 等待线程退出<br>
+        • 挂载 6 个路由：<code>/api/chat</code> / <code>/api/sensors</code> / <code>/api/camera</code> / <code>/api/memory</code> / <code>/api/reminders</code> / <code>/api/status</code><br>
+        • 挂载 <code>/static</code> 静态文件目录<br>
+        • <code>GET /</code> 返回 index.html 主页
+    </div>
+</div>
+
+<div class="file">
+    <div class="file-name">web/routers/sensors.py <span class="tag tag-real">真实逻辑</span></div>
+    <div class="file-desc">传感器数据 API，已接入 SQLite</div>
+    <div class="file-detail">
+        • <code>GET /api/sensors</code> → 从 DB 读取最新一条传感器数据 + 舒适度评分<br>
+        • <code>GET /api/sensors/history?range=24h</code> → 支持 1h/6h/24h/7d 四档降采样查询<br>
+        • 降采样逻辑：按 step_seconds 过滤，避免返回过多数据
+    </div>
+</div>
+
+<div class="file">
+    <div class="file-name">web/routers/chat.py <span class="tag tag-stub">模拟数据</span></div>
+    <div class="file-desc">AI 对话接口</div>
+    <div class="file-detail">
+        • <code>POST /api/chat</code> → 接收 user_input，返回 echo 回复（后续接入 DeepSeek LLM）<br>
+        • <code>POST /api/chat/stream</code> → SSE 流式返回，每 token 延迟 80ms 模拟打字效果
+    </div>
+</div>
+
+<div class="file">
+    <div class="file-name">web/routers/camera.py <span class="tag tag-stub">模拟数据</span></div>
+    <div class="file-desc">摄像头接口</div>
+    <div class="file-detail">
+        • <code>GET /api/camera/stream</code> → MJPEG 流占位（后续接入 OpenCV）<br>
+        • <code>POST /api/camera/capture</code> → 拍照分析占位
+    </div>
+</div>
+
+<div class="file">
+    <div class="file-name">web/routers/memory.py <span class="tag tag-stub">模拟数据</span></div>
+    <div class="file-desc">记忆查询接口</div>
+    <div class="file-detail">
+        • <code>GET /api/memory</code> → 记忆列表（后续接入 SQLite + ChromaDB）<br>
+        • <code>GET /api/memory/search?q=xxx</code> → 语义搜索
+    </div>
+</div>
+
+<div class="file">
+    <div class="file-name">web/routers/reminders.py <span class="tag tag-stub">模拟数据</span></div>
+    <div class="file-desc">提醒 CRUD 接口</div>
+    <div class="file-detail">
+        • <code>GET /api/reminders</code> → 列表<br>
+        • <code>POST /api/reminders</code> → 创建<br>
+        • <code>DELETE /api/reminders/{id}</code> → 删除
+    </div>
+</div>
+
+<div class="file">
+    <div class="file-name">web/routers/status.py <span class="tag tag-stub">模拟数据</span></div>
+    <div class="file-desc">宠物状态接口</div>
+    <div class="file-detail">
+        • <code>GET /api/status</code> → 情绪 + 等级 + 经验<br>
+        • <code>GET /api/evolution</code> → 进化状态
+    </div>
+</div>
+
+<!-- ═══════════════════════════════ -->
+<h2>四、数据库与记忆系统</h2>
+
+<div class="file">
+    <div class="file-name">memory/database.py <span class="tag tag-real">真实逻辑</span></div>
+    <div class="file-desc">SQLite 初始化与连接管理</div>
+    <div class="file-detail">
+        • <code>init_db()</code> — 启动时执行 schema.sql 建表，启用 WAL 模式<br>
+        • <code>get_conn()</code> — 上下文管理器，自动 commit/rollback，Row Factory 返回字典
+    </div>
+</div>
+
+<div class="file">
+    <div class="file-name">memory/sensor_manager.py <span class="tag tag-real">真实逻辑</span></div>
+    <div class="file-desc">传感器数据读写 + 历史查询</div>
+    <div class="file-detail">
+        • <code>read_and_store()</code> — 读取传感器 → 写入 sensor_readings 表（每 10 秒调用）<br>
+        • <code>get_latest()</code> — 返回 DB 中最新一条数据 + 舒适度评分<br>
+        • <code>get_history(hours, step_seconds)</code> — 按时间范围查询 + 降采样过滤<br>
+        • <code>_calc_comfort()</code> — 基于温湿度计算舒适度（最优：20-26°C, 40-60%RH）
+    </div>
+</div>
+
+<div class="file">
+    <div class="file-name">memory/schema.sql <span class="tag tag-real">真实逻辑</span></div>
+    <div class="file-desc">SQLite 数据库表定义</div>
+    <div class="file-detail">
+        • <code>sensor_readings</code> — 温度/湿度/光照，每 10 秒一条<br>
+        • <code>interactions</code> — 对话记录（来源/输入/回复/情绪/工具）<br>
+        • <code>short_term_memory</code> — 每日摘要（统计/话题/温度范围）<br>
+        • <code>long_term_memory</code> — 长期记忆（类别/重要度/ChromaDB 向量 ID）<br>
+        • <code>reminders</code> — 提醒规则（单次/周期/条件触发）<br>
+        • <code>mood_log</code> — 情绪变化日志（情绪/分数/影响因素 JSON）<br>
+        • <code>evolution_state</code> — 进化状态（等级/经验值/性格 JSON）
+    </div>
+</div>
+
+<div class="file">
+    <div class="file-name">memory/manager.py <span class="tag tag-stub">接口骨架</span></div>
+    <div class="file-desc">MemoryManager 统一记忆接口（待实现）</div>
+    <div class="file-detail">
+        • <code>store(type, content)</code> / <code>recall(query)</code> / <code>get_recent_context()</code><br>
+        • <code>get_short_term()</code> / <code>reflect()</code> — 后续接入 ChromaDB 向量检索
+    </div>
+</div>
+
+<!-- ═══════════════════════════════ -->
+<h2>五、Agent 状态机</h2>
+
+<div class="file">
+    <div class="file-name">agent/state.py <span class="tag tag-real">真实逻辑</span></div>
+    <div class="file-desc">PetState 类型定义（TypedDict）</div>
+    <div class="file-detail">
+        • <code>messages</code> — 对话历史<br>
+        • <code>sensor_data</code> — 当前传感器快照<br>
+        • <code>voice_text</code> / <code>image_desc</code> — 多模态输入<br>
+        • <code>recalled_memories</code> — 检索到的记忆<br>
+        • <code>mood</code> — 当前情绪状态<br>
+        • <code>oled_text</code> / <code>oled_expression</code> — 硬件输出指令<br>
+        • <code>next_action</code> — 下一步决策
+    </div>
+</div>
+
+<div class="file">
+    <div class="file-name">agent/graph.py <span class="tag tag-stub">接口骨架</span></div>
+    <div class="file-desc">LangGraph 状态机图定义（待实现）</div>
+    <div class="file-detail">
+        • 图结构：START → Perceive → Recall → Think → Decide → [Act | Tools | Reflect] → END<br>
+        • Decider 节点根据 Think 输出路由到不同分支
+    </div>
+</div>
+
+<div class="file">
+    <div class="file-name">agent/prompt.py <span class="tag tag-real">真实逻辑</span></div>
+    <div class="file-desc">System Prompt 构建器</div>
+    <div class="file-detail">
+        • <code>MOOD_PROMPT_MAP</code> — 7 种情绪对应的 prompt 片段<br>
+        • <code>build_system_prompt(mood, memories)</code> — 组装完整 system prompt（角色设定 + 情绪 + 记忆）
+    </div>
+</div>
+
+<!-- ═══════════════════════════════ -->
+<h2>六、感知层</h2>
+
+<div class="file">
+    <div class="file-name">perception/sensors.py <span class="tag tag-real">真实逻辑</span></div>
+    <div class="file-desc">传感器统一读取接口</div>
+    <div class="file-detail">
+        • <code>HARDWARE_AVAILABLE</code> 标志位，自动判断是否在树莓派上<br>
+        • 有硬件 → 调用 DS18B20 + DHT11 + BH1750 驱动<br>
+        • 无硬件 → 返回 mock 随机数据（开发环境用）
+    </div>
+</div>
+
+<div class="file">
+    <div class="file-name">perception/camera.py <span class="tag tag-stub">接口骨架</span></div>
+    <div class="file-desc">摄像头采集接口（待接入 OpenCV）</div>
+    <div class="file-detail">
+        • <code>capture()</code> — 拍照返回图像<br>
+        • <code>analyze()</code> — 图像分析（人脸检测/场景理解）<br>
+        • <code>stream()</code> — MJPEG 帧生成器
+    </div>
+</div>
+
+<div class="file">
+    <div class="file-name">perception/speech.py <span class="tag tag-stub">接口骨架</span></div>
+    <div class="file-desc">语音识别接口（待接入 Whisper）</div>
+    <div class="file-detail">
+        • <code>listen()</code> — 录音<br>
+        • <code>transcribe()</code> — Whisper 语音转文字
+    </div>
+</div>
+
+<!-- ═══════════════════════════════ -->
+<h2>七、硬件驱动</h2>
+
+<div class="file">
+    <div class="file-name">hardware/oled.py <span class="tag tag-stub">接口骨架</span></div>
+    <div class="file-desc">SSD1306 OLED 显示屏驱动（I2C）</div>
+    <div class="file-detail">
+        • <code>show_expression(name)</code> — 显示 128×64 表情位图<br>
+        • <code>show_text(text)</code> — 滚动文字<br>
+        • <code>show_data(sensor)</code> — 显示传感器数值<br>
+        • <code>clear()</code> — 清屏
+    </div>
+</div>
+
+<div class="file">
+    <div class="file-name">hardware/led.py <span class="tag tag-stub">接口骨架</span></div>
+    <div class="file-desc">RGB LED 驱动（GPIO PWM）</div>
+    <div class="file-detail">
+        • <code>MOOD_COLORS</code> — 7 种情绪对应颜色（happy→金色, alert→红色 等）<br>
+        • <code>set_mood(mood)</code> — 根据情绪设置 LED 颜色<br>
+        • <code>set_color(r,g,b)</code> — 直接设置颜色
+    </div>
+</div>
+
+<div class="file">
+    <div class="file-name">hardware/buzzer.py <span class="tag tag-stub">接口骨架</span></div>
+    <div class="file-desc">蜂鸣器驱动（GPIO PWM）</div>
+    <div class="file-detail">
+        • <code>beep(frequency, duration)</code> — 基础发声<br>
+        • <code>reminder_sound()</code> / <code>welcome_sound()</code> / <code>level_up_sound()</code>
+    </div>
+</div>
+
+<div class="file">
+    <div class="file-name">hardware/speaker.py <span class="tag tag-stub">接口骨架</span></div>
+    <div class="file-desc">USB 音响驱动（TTS 语音合成）</div>
+    <div class="file-detail">
+        • <code>speak(text)</code> — edge-tts 合成 → 播放<br>
+        • <code>play_wav(path)</code> / <code>play_mp3(path)</code> — 播放音频文件
+    </div>
+</div>
+
+<!-- ═══════════════════════════════ -->
+<h2>八、调度器</h2>
+
+<div class="file">
+    <div class="file-name">scheduler/reminder.py <span class="tag tag-stub">接口骨架</span></div>
+    <div class="file-desc">APScheduler 提醒调度（待实现）</div>
+    <div class="file-detail">
+        • <code>add_once(trigger_at, content)</code> — 单次定时提醒<br>
+        • <code>add_cron(cron_expr, content)</code> — 周期提醒（如每天 8:00）<br>
+        • <code>add_interval(seconds, content)</code> — 间隔提醒（如每小时喝水）<br>
+        • <code>remove(job_id)</code> / <code>list_jobs()</code>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════ -->
+<h2>九、前端文件</h2>
+
+<div class="file">
+    <div class="file-name">web/static/index.html</div>
+    <div class="file-desc">单页应用主页，5 个 Tab 面板</div>
+    <div class="file-detail">
+        • <strong>Header</strong>：房子图标 + 名称 + 时间/祝福语 + Tab 导航 + 通知/设置<br>
+        • <strong>AI 对话</strong>：左侧消息流 + 右侧历史记录栏 + 输入框<br>
+        • <strong>摄像头</strong>：视频区 + 控制按钮 + 右侧分析/快照<br>
+        • <strong>传感器</strong>：4 张数据卡片 + 温度/湿度/情绪图表<br>
+        • <strong>记忆</strong>：搜索栏 + 长期记忆列表 + 短期摘要<br>
+        • <strong>提醒</strong>：提醒列表 + 添加表单 + 已过期区
+    </div>
+</div>
+
+<div class="file">
+    <div class="file-name">web/static/style.css</div>
+    <div class="file-desc">暖色护眼主题，全部使用 CSS Custom Properties 令牌</div>
+    <div class="file-detail">
+        • 设计令牌（surface/text/accent/semantic/shadow/motion）<br>
+        • 组件样式（header/tabs/buttons/inputs/chat/camera/sensors/memory/reminders）<br>
+        • 响应式（1024px / 768px 断点）+ reduced-motion 适配
+    </div>
+</div>
+
+<div class="file">
+    <div class="file-name">web/static/app.js</div>
+    <div class="file-desc">前端交互逻辑</div>
+    <div class="file-detail">
+        • <code>initTabs()</code> — Tab 切换 + ARIA 状态同步<br>
+        • <code>initChat()</code> — 发送消息 + 模拟回复 + 滚动到底部<br>
+        • <code>initCharts()</code> — Chart.js 温度/湿度趋势图 + Canvas 情绪时间线<br>
+        • <code>showToast()</code> — 通知气泡系统<br>
+        • <code>rotateGreeting()</code> — 祝福语每 30 秒随机切换<br>
+        • <code>updateClock()</code> — 实时时钟显示
+    </div>
+</div>
+
+<!-- ═══════════════════════════════ -->
+<h2>十、状态总览</h2>
+
+<table>
+    <thead>
+        <tr><th>文件</th><th>状态</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>main.py</td><td><span class="tag tag-real">真实</span></td><td>程序入口</td></tr>
+        <tr><td>config.py</td><td><span class="tag tag-real">真实</span></td><td>全局配置</td></tr>
+        <tr><td>web/app.py</td><td><span class="tag tag-real">真实</span></td><td>FastAPI + lifespan</td></tr>
+        <tr><td>web/routers/sensors.py</td><td><span class="tag tag-real">真实</span></td><td>接入 SQLite 真实数据</td></tr>
+        <tr><td>memory/database.py</td><td><span class="tag tag-real">真实</span></td><td>SQLite 初始化</td></tr>
+        <tr><td>memory/sensor_manager.py</td><td><span class="tag tag-real">真实</span></td><td>传感器读写管道</td></tr>
+        <tr><td>memory/schema.sql</td><td><span class="tag tag-real">真实</span></td><td>7 张表定义</td></tr>
+        <tr><td>perception/sensors.py</td><td><span class="tag tag-real">真实</span></td><td>传感器读取（含 mock）</td></tr>
+        <tr><td>agent/prompt.py</td><td><span class="tag tag-real">真实</span></td><td>Prompt 构建器</td></tr>
+        <tr><td>agent/state.py</td><td><span class="tag tag-real">真实</span></td><td>PetState 类型定义</td></tr>
+        <tr><td>web/static/*</td><td><span class="tag tag-real">真实</span></td><td>完整前端 UI</td></tr>
+        <tr><td>web/routers/chat.py</td><td><span class="tag tag-stub">模拟</span></td><td>echo 回复，待接 LLM</td></tr>
+        <tr><td>web/routers/camera.py</td><td><span class="tag tag-stub">模拟</span></td><td>占位，待接 OpenCV</td></tr>
+        <tr><td>web/routers/memory.py</td><td><span class="tag tag-stub">模拟</span></td><td>占位，待接 ChromaDB</td></tr>
+        <tr><td>web/routers/reminders.py</td><td><span class="tag tag-stub">模拟</span></td><td>占位，待接 APScheduler</td></tr>
+        <tr><td>web/routers/status.py</td><td><span class="tag tag-stub">模拟</span></td><td>占位，待接进化系统</td></tr>
+        <tr><td>agent/graph.py</td><td><span class="tag tag-stub">骨架</span></td><td>LangGraph 待实现</td></tr>
+        <tr><td>memory/manager.py</td><td><span class="tag tag-stub">骨架</span></td><td>记忆管理待实现</td></tr>
+        <tr><td>perception/camera.py</td><td><span class="tag tag-stub">骨架</span></td><td>摄像头待实现</td></tr>
+        <tr><td>perception/speech.py</td><td><span class="tag tag-stub">骨架</span></td><td>语音识别待实现</td></tr>
+        <tr><td>hardware/*.py</td><td><span class="tag tag-stub">骨架</span></td><td>硬件驱动待实现</td></tr>
+        <tr><td>scheduler/reminder.py</td><td><span class="tag tag-stub">骨架</span></td><td>调度器待实现</td></tr>
+    </tbody>
+</table>
+
+<p style="margin-top:32px;color:#a89e95;font-size:13px;text-align:center;">— 智居物语 · 代码说明文档 —</p>
+
+</body>
+</html>

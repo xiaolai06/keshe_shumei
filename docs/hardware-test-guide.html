@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智居物语 — 硬件测试指南</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #f5f2ee; color: #3d3530; line-height: 1.8; padding: 40px; max-width: 1000px; margin: 0 auto; }
+        h1 { font-size: 28px; margin-bottom: 6px; }
+        h2 { font-size: 20px; margin: 36px 0 12px; padding-bottom: 6px; border-bottom: 2px solid #d9d2c8; color: #5b8a9a; }
+        h3 { font-size: 16px; margin: 18px 0 8px; }
+        p, li { font-size: 14px; color: #7a716a; margin-bottom: 6px; }
+        .subtitle { color: #a89e95; font-size: 14px; margin-bottom: 32px; }
+        code { background: #eee9e2; padding: 1px 5px; border-radius: 4px; font-size: 13px; font-family: Consolas, monospace; }
+        pre { background: #3d3530; color: #e4e4ec; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.5; }
+        .card { background: #fffdf9; border: 1px solid #d9d2c8; border-radius: 10px; padding: 20px; margin: 12px 0; }
+        .card-title { font-weight: 700; font-size: 15px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+        .pin-table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+        .pin-table th, .pin-table td { padding: 6px 12px; text-align: left; border: 1px solid #d9d2c8; font-size: 13px; }
+        .pin-table th { background: #eee9e2; font-weight: 600; }
+        .pin-table td code { font-size: 12px; }
+        .step { display: flex; gap: 10px; margin: 8px 0; }
+        .step-num { width: 24px; height: 24px; background: #5b8a9a; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
+        .step-content { flex: 1; }
+        .tag { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 600; }
+        .tag-ok { background: rgba(90,158,111,.1); color: #5a9e6f; }
+        .tag-fail { background: rgba(192,96,88,.1); color: #c06058; }
+        .tip { background: rgba(91,138,154,.08); border-left: 3px solid #5b8a9a; padding: 10px 14px; border-radius: 0 8px 8px 0; margin: 8px 0; font-size: 13px; color: #5b8a9a; }
+        .warn { background: rgba(200,136,58,.08); border-left: 3px solid #c8883a; padding: 10px 14px; border-radius: 0 8px 8px 0; margin: 8px 0; font-size: 13px; color: #8a6020; }
+        .wiring-diagram { background: #fffdf9; border: 1px solid #d9d2c8; border-radius: 10px; padding: 20px; margin: 12px 0; font-family: Consolas, monospace; font-size: 13px; line-height: 1.6; overflow-x: auto; }
+    </style>
+</head>
+<body>
+
+<h1>智居物语 — 硬件测试指南</h1>
+<p class="subtitle">接好线之后，按顺序逐个验证每个模块是否正常工作</p>
+
+<!-- ═══════════════════════════════════ -->
+<h2>一、接线总览</h2>
+
+<div class="wiring-diagram">
+┌─────────────────────────────────────────────────────────────┐
+│                    Raspberry Pi 4B 引脚分配                  │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  GPIO 4  ── DS18B20 温度传感器 (DQ, 需 4.7kΩ 上拉到 3.3V)   │
+│  GPIO 17 ── DHT11 温湿度传感器 (DATA, 需 10kΩ 上拉到 3.3V)  │
+│                                                             │
+│  I2C-1   ── BH1750 光照传感器 (SDA/SCL, 地址 0x23)           │
+│  I2C-1   ── SSD1306 OLED 显示屏 (SDA/SCL, 地址 0x3C)        │
+│                                                             │
+│  GPIO 27 ── RGB LED 红 (串联 330Ω 电阻)                      │
+│  GPIO 22 ── RGB LED 绿 (串联 330Ω 电阻)                      │
+│  GPIO 5  ── RGB LED 蓝 (串联 330Ω 电阻)                      │
+│                                                             │
+│  GPIO 12 ── 有源蜂鸣器 (+)（物理32）                        │
+│                                                             │
+│  USB     ── USB 摄像头                                       │
+│  USB     ── USB 音响                                         │
+│  I2S     ── INMP441 麦克风×2 (BCLK/LRCK/DIN)                │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+</div>
+
+<div class="warn">
+    <strong>⚠ 接线前必须断电！</strong> 先接好所有线，确认无短路后再通电。I2C 设备可以共用 SDA/SCL 线（不同地址）。LED 必须串联限流电阻，否则会烧毁。
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<h2>二、测试步骤（按顺序）</h2>
+
+<!-- ── 步骤 1 ───────────────────────── -->
+<h3>步骤 1：SSH 登录树莓派</h3>
+<div class="card">
+<pre># 在电脑上 SSH 登录树莓派
+ssh pi@树莓派IP地址
+
+# 检查系统状态
+vcgencmd measure_temp      # 查看 CPU 温度
+free -h                    # 查看内存
+df -h /                    # 查看磁盘空间</pre>
+    <div class="step">
+        <div class="step-num">✓</div>
+        <div class="step-content">看到 CPU 温度、内存、磁盘信息 → 登录成功</div>
+    </div>
+</div>
+
+<!-- ── 步骤 2 ───────────────────────── -->
+<h3>步骤 2：启用硬件接口（只需一次）</h3>
+<div class="card">
+<pre># 打开树莓派配置工具
+sudo raspi-config</pre>
+<p>进入 <strong>Interface Options</strong>，依次启用：</p>
+    <table class="pin-table">
+        <tr><th>选项</th><th>作用</th></tr>
+        <tr><td>I2C</td><td>BH1750 + SSD1306 共用总线</td></tr>
+        <tr><td>SPI</td><td>备用 OLED 接口（如用 SPI 模式）</td></tr>
+        <tr><td>1-Wire</td><td>DS18B20 温度传感器</td></tr>
+        <tr><td>Camera</td><td>CSI 摄像头（USB 摄像头不需要）</td></tr>
+    </table>
+    <p>完成后重启：</p>
+    <pre>sudo reboot</pre>
+</div>
+
+<!-- ── 步骤 3 ───────────────────────── -->
+<h3>步骤 3：测试 I2C 总线（BH1750 + OLED）</h3>
+<div class="card">
+    <pre># 安装工具
+sudo apt install -y i2c-tools
+
+# 扫描 I2C 总线
+i2cdetect -y 1</pre>
+    <p>正常输出应该看到：</p>
+    <pre>     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+00:          -- -- -- -- -- -- -- -- -- -- -- -- -- --
+10: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+20: -- -- -- 23 -- -- -- -- -- -- -- -- -- -- -- --    ← BH1750
+30: -- -- -- -- -- -- -- -- -- -- -- -- 3c -- -- --    ← OLED
+40: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+...</pre>
+    <div class="step">
+        <div class="step-num">✓</div>
+        <div class="step-content">看到 <code>0x23</code>（BH1750）和 <code>0x3C</code>（OLED）→ I2C 设备正常</div>
+    </div>
+    <div class="step">
+        <div class="step-num">✗</div>
+        <div class="step-content">全部显示 <code>--</code> → 检查 SDA/SCL 接线是否反了，确认上拉电阻，确认已启用 I2C</div>
+    </div>
+</div>
+
+<!-- ── 步骤 4 ───────────────────────── -->
+<h3>步骤 4：测试 DS18B20 温度传感器</h3>
+<div class="card">
+    <pre># 查看 1-Wire 设备
+ls /sys/bus/w1/devices/</pre>
+    <p>正常输出应该有类似 <code>28-xxxxxxxxxxxx</code> 的文件夹（28 开头的是 DS18B20）</p>
+    <pre># 读取温度
+cat /sys/bus/w1/devices/28-xxxxxxxxxxxx/temperature</pre>
+    <p>输出一个整数（如 <code>25375</code>），除以 1000 = <strong>25.375°C</strong></p>
+    <div class="step">
+        <div class="step-num">✓</div>
+        <div class="step-content">读到合理温度值（10~50 之间）→ DS18B20 正常</div>
+    </div>
+    <div class="step">
+        <div class="step-num">✗</div>
+        <div class="step-content">没有 28- 开头的文件夹 → 检查数据线接 GPIO 4，确认 4.7kΩ 上拉电阻</div>
+    </div>
+</div>
+
+<!-- ── 步骤 5 ───────────────────────── -->
+<h3>步骤 5：测试 DHT11 温湿度传感器</h3>
+<div class="card">
+    <pre># 安装库
+pip install adafruit-circuitpython-dht
+sudo apt install -y gpiod
+
+# 测试读取
+python3 -c "
+import adafruit_dht
+import board
+
+dht = adafruit_dht.DHT11(board.D17)
+temp = dht.temperature
+humi = dht.humidity
+print(f'温度: {temp}°C  湿度: {humi}%')
+dht.exit()
+"</pre>
+    <div class="step">
+        <div class="step-num">✓</div>
+        <div class="step-content">输出温度 10~50°C、湿度 20~90% → DHT11 正常</div>
+    </div>
+    <div class="step">
+        <div class="step-num">✗</div>
+        <div class="step-content">报错 <code>RuntimeError</code> → DHT11 需要 2 秒间隔重试，多跑几次；仍失败检查 DATA 线接 GPIO 17</div>
+    </div>
+</div>
+
+<!-- ── 步骤 6 ───────────────────────── -->
+<h3>步骤 6：测试 BH1750 光照传感器</h3>
+<div class="card">
+    <pre># 安装库
+pip install smbus2
+
+# 测试读取
+python3 -c "
+import smbus
+bus = smbus.SMBus(1)
+bus.write_byte(0x23, 0x10)   # 连续高分辨率模式
+import time; time.sleep(0.2)
+data = bus.read_i2c_block_data(0x23, 0x00, 2)
+lux = (data[0] << 8 | data[1]) / 1.2
+print(f'光照: {lux:.0f} lx')
+bus.close()
+"</pre>
+    <div class="step">
+        <div class="step-num">✓</div>
+        <div class="step-content">输出合理光照值（室内 100~1000 lx，遮住传感器下降）→ BH1750 正常</div>
+    </div>
+</div>
+
+<!-- ── 步骤 7 ───────────────────────── -->
+<h3>步骤 7：测试 SSD1306 OLED 显示屏</h3>
+<div class="card">
+    <pre># 安装库
+pip install luma.oled Pillow
+
+# 测试显示文字
+python3 -c "
+from luma.core.interface.serial import i2c
+from luma.oled.device import ssd1306
+from PIL import ImageDraw, Image
+
+serial = i2c(port=1, address=0x3C)
+device = ssd1306(serial, width=128, height=64)
+img = Image.new('1', (128, 64))
+draw = ImageDraw.Draw(img)
+draw.text((10, 20), 'Hello 智居物语!', fill=1)
+device.display(img)
+print('OLED 显示成功')
+"</pre>
+    <div class="step">
+        <div class="step-num">✓</div>
+        <div class="step-content">OLED 屏幕显示 "Hello 智居物语!" → 显示屏正常</div>
+    </div>
+    <div class="step">
+        <div class="step-num">✗</div>
+        <div class="step-content">无显示 → 确认地址 0x3C（<code>i2cdetect</code> 看到的是 3c 还是 3d），检查 SDA/SCL</div>
+    </div>
+</div>
+
+<!-- ── 步骤 8 ───────────────────────── -->
+<h3>步骤 8：测试 RGB LED</h3>
+<div class="card">
+    <pre># 安装库（树莓派自带）
+pip install RPi.GPIO
+
+# 测试：依次亮红绿蓝各 1 秒
+python3 -c "
+import RPi.GPIO as GPIO
+import time
+
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(27, GPIO.OUT)   # 红
+GPIO.setup(22, GPIO.OUT)   # 绿
+GPIO.setup(5,  GPIO.OUT)   # 蓝
+
+pwm_r = GPIO.PWM(27, 1000)
+pwm_g = GPIO.PWM(22, 1000)
+pwm_b = GPIO.PWM(5,  1000)
+
+pwm_r.start(50); print('亮红灯 1 秒'); time.sleep(1); pwm_r.stop()
+pwm_g.start(50); print('亮绿灯 1 秒'); time.sleep(1); pwm_g.stop()
+pwm_b.start(50); print('亮蓝灯 1 秒'); time.sleep(1); pwm_b.stop()
+
+GPIO.cleanup()
+print('RGB LED 测试完成')
+"</pre>
+    <div class="step">
+        <div class="step-num">✓</div>
+        <div class="step-content">依次看到红、绿、蓝亮起 → LED 正常</div>
+    </div>
+    <div class="step">
+        <div class="step-num">✗</div>
+        <div class="step-content">不亮 → 检查 330Ω 限流电阻、确认 GPIO 引脚号、确认 LED 长脚接 GPIO 短脚接地</div>
+    </div>
+</div>
+
+<!-- ── 步骤 9 ───────────────────────── -->
+<h3>步骤 9：测试蜂鸣器</h3>
+<div class="card">
+    <pre>python3 -c "
+import RPi.GPIO as GPIO
+import time
+
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(12, GPIO.OUT)
+pwm = GPIO.PWM(12, 1000)
+
+pwm.start(50); print('响 0.5 秒'); time.sleep(0.5)
+pwm.ChangeFrequency(2000); time.sleep(0.3)
+pwm.ChangeFrequency(1500); time.sleep(0.3)
+pwm.stop()
+
+GPIO.cleanup()
+print('蜂鸣器测试完成')
+"</pre>
+    <div class="step">
+        <div class="step-num">✓</div>
+        <div class="step-content">听到不同频率的响声 → 蜂鸣器正常</div>
+    </div>
+    <div class="step">
+        <div class="step-num">✗</div>
+        <div class="step-content">无声 → 确认是有源蜂鸣器还是无源蜂鸣器（有源直接给高低电平，无源需要 PWM），检查 GPIO 12</div>
+    </div>
+</div>
+
+<!-- ── 步骤 10 ──────────────────────── -->
+<h3>步骤 10：测试 USB 摄像头</h3>
+<div class="card">
+    <pre># 安装 OpenCV
+pip install opencv-python-headless
+
+# 测试拍照
+python3 -c "
+import cv2
+
+cap = cv2.VideoCapture(0)
+if not cap.isOpened():
+    print('摄像头打开失败！')
+else:
+    ret, frame = cap.read()
+    if ret:
+        cv2.imwrite('/tmp/test_photo.jpg', frame)
+        h, w = frame.shape[:2]
+        print(f'拍照成功！分辨率: {w}x{h}，已保存到 /tmp/test_photo.jpg')
+    else:
+        print('读取画面失败')
+cap.release()
+"</pre>
+    <div class="step">
+        <div class="step-num">✓</div>
+        <div class="step-content">输出分辨率信息（如 640x480）→ 摄像头正常</div>
+    </div>
+    <div class="step">
+        <div class="step-num">✗</div>
+        <div class="step-content">"打开失败" → 检查 USB 接口，运行 <code>ls /dev/video*</code> 确认设备存在</div>
+    </div>
+</div>
+
+<!-- ── 步骤 11 ──────────────────────── -->
+<h3>步骤 11：测试 USB 音响</h3>
+<div class="card">
+    <pre># 查看音频设备
+aplay -l
+
+# 测试播放（系统自带的测试音）
+speaker-test -D plughw:1,0 -t sine -f 440 -l 1
+
+# 测试 edge-tts 语音合成
+pip install edge-tts
+edge-tts --text "你好，我是智居物语" --write-media /tmp/test.mp3
+ffplay -nodisp -autoexit /tmp/test.mp3</pre>
+    <div class="step">
+        <div class="step-num">✓</div>
+        <div class="step-content">听到 440Hz 测试音 / 语音播报 → 音响正常</div>
+    </div>
+    <div class="step">
+        <div class="step-num">✗</div>
+        <div class="step-content">无声 → <code>amixer set PCM 100%</code> 调大音量，确认 <code>aplay -l</code> 看到 USB 声卡</div>
+    </div>
+    <div class="tip">
+        💡 如果有多个声卡，需要在 <code>config.py</code> 中修改音频设备号
+    </div>
+</div>
+
+<!-- ── 步骤 12 ──────────────────────── -->
+<h3>步骤 12：测试 INMP441 麦克风</h3>
+<div class="card">
+    <pre># 查看 I2S 设备
+arecord -l
+
+# 测试录音（3 秒）
+arecord -D plughw:1,0 -f S32_LE -r 16000 -c 1 -d 3 /tmp/test_mic.wav
+aplay /tmp/test_mic.wav</pre>
+    <div class="step">
+        <div class="step-num">✓</div>
+        <div class="step-content">录音并回放听到自己的声音 → 麦克风正常</div>
+    </div>
+    <div class="step">
+        <div class="step-num">✗</div>
+        <div class="step-content">无 I2S 设备 → 需要配置 <code>/boot/config.txt</code> 启用 I2S overlay，重启后重试</div>
+    </div>
+    <div class="warn">
+        ⚠ INMP441 需要配置 I2S overlay。编辑 <code>sudo nano /boot/config.txt</code>，添加：<br>
+        <code>dtoverlay=i2s-mmic</code><br>
+        重启后用 <code>arecord -l</code> 检查是否出现 I2S 设备
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<h2>三、一键全部测试</h2>
+
+<div class="card">
+    <p>所有模块单独验证通过后，运行这个脚本做一次完整自检：</p>
+    <pre>cd ~/pi-pet-agent
+python3 -c "
+from perception.sensors import SensorReader
+from memory.database import init_db
+from memory.sensor_manager import read_and_store, get_latest
+
+# 1. 数据库
+print('[1/3] 初始化数据库...')
+init_db()
+
+# 2. 传感器
+print('[2/3] 测试传感器读写...')
+data = read_and_store()
+print(f'   写入: 温度={data[\"temperature\"]}°C  湿度={data[\"humidity\"]}%  光照={data[\"light_lux\"]}lx')
+
+# 3. 查询
+print('[3/3] 测试数据查询...')
+latest = get_latest()
+print(f'   最新: 温度={latest[\"temperature\"]}°C  舒适度={latest[\"comfort_score\"]}')
+
+print()
+print('✅ 全部通过！系统可以上线运行了')
+"</pre>
+    <div class="step">
+        <div class="step-num">✓</div>
+        <div class="step-content">全部通过 → 可以启动主程序：<code>python3 main.py</code></div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<h2>四、常见问题排查</h2>
+
+<div class="card">
+    <table class="pin-table">
+        <tr><th>问题</th><th>原因</th><th>解决方法</th></tr>
+        <tr>
+            <td>I2C 扫描无设备</td>
+            <td>I2C 未启用 / 接线错误</td>
+            <td><code>sudo raspi-config</code> 启用 I2C；检查 SDA→GPIO2, SCL→GPIO3</td>
+        </tr>
+        <tr>
+            <td>DHT11 读取失败</td>
+            <td>时序精度不够</td>
+            <td>用 <code>adafruit-circuitpython-dht</code> 库（比 Adafruit_DHT 更稳定）；间隔 ≥2 秒重试</td>
+        </tr>
+        <tr>
+            <td>DS18B20 读不到</td>
+            <td>1-Wire 未启用 / 缺上拉电阻</td>
+            <td>启用 1-Wire；确认 4.7kΩ 电阻从数据线拉到 3.3V</td>
+        </tr>
+        <tr>
+            <td>OLED 全黑</td>
+            <td>地址错误 / 没上电</td>
+            <td>用 <code>i2cdetect</code> 确认地址（有些模块是 0x3D）；检查 VCC 接 3.3V 还是 5V</td>
+        </tr>
+        <tr>
+            <td>LED 不亮</td>
+            <td>没有限流电阻 / 引脚接错</td>
+            <td>串联 330Ω 电阻；确认 GPIO 引脚号（BCM 编号不是物理编号）</td>
+        </tr>
+        <tr>
+            <td>USB 摄像头打不开</td>
+            <td>被其他进程占用</td>
+            <td><code>sudo fuser /dev/video0</code> 找占用进程并 kill</td>
+        </tr>
+        <tr>
+            <td>录音无声音</td>
+            <td>I2S overlay 未配置</td>
+            <td>编辑 <code>/boot/config.txt</code> 添加 <code>dtoverlay=i2s-mmic</code>，重启</td>
+        </tr>
+    </table>
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<h2>五、引脚对照表</h2>
+
+<div class="card">
+    <table class="pin-table">
+        <tr><th>模块</th><th>接口</th><th>树莓派引脚</th><th>备注</th></tr>
+        <tr><td>DS18B20</td><td>1-Wire</td><td><code>GPIO 4</code> (物理 7)</td><td>需 4.7kΩ 上拉</td></tr>
+        <tr><td>DHT11</td><td>单总线</td><td><code>GPIO 17</code> (物理 11)</td><td>需 10kΩ 上拉</td></tr>
+        <tr><td>BH1750</td><td>I2C</td><td><code>SDA(GPIO2)</code> <code>SCL(GPIO3)</code></td><td>地址 0x23</td></tr>
+        <tr><td>SSD1306</td><td>I2C</td><td><code>SDA(GPIO2)</code> <code>SCL(GPIO3)</code></td><td>地址 0x3C</td></tr>
+        <tr><td>RGB LED</td><td>GPIO PWM</td><td><code>GPIO27</code> <code>GPIO22</code> <code>GPIO5</code></td><td>各串联 330Ω</td></tr>
+        <tr><td>蜂鸣器</td><td>GPIO PWM</td><td><code>GPIO 12</code> (物理 32)</td><td>有源蜂鸣器，高电平响</td></tr>
+        <tr><td>USB 摄像头</td><td>USB</td><td>任意 USB 口</td><td><code>/dev/video0</code></td></tr>
+        <tr><td>USB 音响</td><td>USB Audio</td><td>任意 USB 口</td><td><code>aplay -l</code> 查设备号</td></tr>
+        <tr><td>INMP441</td><td>I2S</td><td><code>GPIO18/19/20/21</code></td><td>需配置 I2S overlay</td></tr>
+    </table>
+</div>
+
+<p style="margin-top:40px;color:#a89e95;font-size:13px;text-align:center;">— 智居物语 · 硬件测试指南 —</p>
+
+</body>
+</html>

@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>智居物语 — 硬件接线说明</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;background:#f5f2ee;color:#3d3530;line-height:1.8;padding:40px;max-width:1000px;margin:0 auto}
+        h1{font-size:28px;margin-bottom:6px}
+        h2{font-size:20px;margin:36px 0 12px;padding-bottom:6px;border-bottom:2px solid #d9d2c8;color:#5b8a9a}
+        h3{font-size:16px;margin:20px 0 8px}
+        p,li{font-size:14px;color:#7a716a;margin-bottom:6px}
+        .sub{color:#a89e95;font-size:14px;margin-bottom:32px}
+        table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}
+        th,td{padding:8px 12px;text-align:left;border:1px solid #d9d2c8}
+        th{background:#eee9e2;font-weight:600}
+        code{background:#eee9e2;padding:1px 5px;border-radius:4px;font-size:12px;font-family:Consolas,monospace}
+        pre{background:#3d3530;color:#e4e4ec;padding:16px;border-radius:8px;overflow-x:auto;margin:12px 0;font-size:13px;line-height:1.5}
+        .card{background:#fffdf9;border:1px solid #d9d2c8;border-radius:10px;padding:20px;margin:12px 0}
+        .card-title{font-weight:700;font-size:15px;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+        .pin{display:inline-block;background:#5b8a9a;color:#fff;padding:1px 8px;border-radius:4px;font-size:12px;font-family:Consolas,monospace;font-weight:600}
+        .vcc{background:#5a9e6f}
+        .gnd{background:#7a716a}
+        .warn{background:rgba(200,136,58,.08);border-left:3px solid #c8883a;padding:10px 14px;border-radius:0 8px 8px 0;margin:8px 0;font-size:13px;color:#8a6020}
+        .tip{background:rgba(91,138,154,.08);border-left:3px solid #5b8a9a;padding:10px 14px;border-radius:0 8px 8px 0;margin:8px 0;font-size:13px;color:#5b8a9a}
+        .diagram{background:#fffdf9;border:1px solid #d9d2c8;border-radius:10px;padding:20px;margin:12px 0;font-family:Consolas,monospace;font-size:13px;line-height:1.5;overflow-x:auto;white-space:pre}
+        .led-wire{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:4px;vertical-align:middle}
+        .led-r{background:#c06058}.led-g{background:#5a9e6f}.led-b{background:#5b8a9a}
+    </style>
+</head>
+<body>
+
+<h1>智居物语 — 硬件接线说明</h1>
+<p class="sub">树莓派 4B · 11 个模块完整接线指南 · BCM 引脚编号 · 无 GPIO 复用</p>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h2>一、接线总图</h2>
+
+<div class="diagram">                    ┌─────────────────────────────┐
+                    │      Raspberry Pi 4B        │
+                    │                             │
+   3.3V (物理1) ────┼──→ DS18B20 VCC              │
+   GPIO 4 (物理7) ──┼──→ DS18B20 DQ ──┬── 4.7kΩ上拉── 3.3V
+                    │                 │            │
+   3.3V (物理1) ────┼──→ DHT11 VCC    │            │
+   GPIO 17(物理11) ─┼──→ DHT11 DATA ──┴── 10kΩ上拉── 3.3V
+                    │                             │
+   3.3V (物理1) ────┼──→ 光照传感器 VCC              │
+   GND   (物理6) ───┼──→ 光照传感器 GND              │
+   MCP3008 CH1 ─────┼──→ 光照传感器 SIG              │
+                    │                             │
+   3.3V (物理1) ────┼──→ SSD1306 VCC              │
+   GND   (物理6) ───┼──→ SSD1306 GND              │
+   GPIO 10(物理19) ─┼──→ SSD1306 DIN (MOSI)       │
+   GPIO 11(物理23) ─┼──→ SSD1306 CLK (SCLK)       │
+   GPIO 8 (物理24) ─┼──→ SSD1306 CS               │
+   GPIO 13(物理33) ─┼──→ SSD1306 DC               │
+   GPIO 24(物理18) ─┼──→ SSD1306 RST              │
+                    │                             │
+   GPIO 27(物理13) ─┼──→ 330Ω ──→ RGB LED 红      │
+   GPIO 22(物理15) ─┼──→ 330Ω ──→ RGB LED 绿      │
+   GPIO 5 (物理29) ─┼──→ 330Ω ──→ RGB LED 蓝      │
+   3.3V (物理1) ────┼──→ RGB LED 公共阳极          │
+                    │                             │
+   GPIO 12(物理32) ─┼──→ 蜂鸣器 (+)               │
+   GND   (物理6) ───┼──→ 蜂鸣器 (-)               │
+                    │                             │
+   USB 口 ──────────┼──→ USB 摄像头                │
+   USB 口 ──────────┼──→ USB 音响                  │
+                    │                             │
+   GPIO 18(物理12) ─┼──→ INMP441#1 SCK (BCLK)     │
+   GPIO 19(物理35) ─┼──→ INMP441#1 WS  (LRCK)     │
+   GPIO 20(物理38) ─┼──→ INMP441#1 SD  (DIN)  ←────── 两个麦克风的SD都接这里
+   GPIO 19(物理35) ─┼──→ INMP441#2 WS  (LRCK)     │
+   GPIO 20(物理38) ─┼──→ INMP441#2 SD  (DIN)      │
+   3.3V (物理1) ────┼──→ INMP441 VDD ×2            │
+   GND   (物理6) ───┼──→ INMP441 GND ×2            │
+                    └─────────────────────────────┘</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h2>二、引脚速查表</h2>
+
+<table>
+    <tr>
+        <th>模块</th><th>接口类型</th><th>BCM 引脚</th><th>物理引脚</th><th>功能</th>
+    </tr>
+    <tr>
+        <td rowspan="2">DS18B20<br>温度传感器</td>
+        <td rowspan="2">1-Wire</td>
+        <td><span class="pin">GPIO 4</span></td>
+        <td>物理 7</td><td>DQ 数据线</td>
+    </tr>
+    <tr>
+        <td><span class="pin vcc">3.3V</span></td>
+        <td>物理 1</td><td>VCC 供电（也可接 5V，数据线必须 3.3V 上拉）</td>
+    </tr>
+    <tr>
+        <td rowspan="2">DHT11<br>温湿度传感器</td>
+        <td rowspan="2">单总线</td>
+        <td><span class="pin">GPIO 17</span></td>
+        <td>物理 11</td><td>DATA 数据线</td>
+    </tr>
+    <tr>
+        <td><span class="pin vcc">3.3V</span></td>
+        <td>物理 1</td><td>VCC 供电</td>
+    </tr>
+    <tr>
+        <td rowspan="3">光照传感器<br>（模拟模块）</td>
+        <td rowspan="3">模拟/ADC</td>
+        <td><span class="pin vcc">3.3V</span></td>
+        <td>物理 1</td><td>VCC 供电</td>
+    </tr>
+    <tr>
+        <td><span class="pin gnd">GND</span></td>
+        <td>物理 6</td><td>接地</td>
+    </tr>
+    <tr>
+        <td><span class="pin">MCP3008 CH1</span></td>
+        <td>见 ADC 接线</td><td>SIG 信号输出（模拟电压，需 ADC 转换）</td>
+    </tr>
+    <tr>
+        <td rowspan="7">SSD1306<br>OLED 显示屏</td>
+        <td rowspan="7">SPI</td>
+        <td><span class="pin">GPIO 10 (MOSI)</span></td>
+        <td>物理 19</td><td>DIN 数据输入</td>
+    </tr>
+    <tr>
+        <td><span class="pin">GPIO 11 (SCLK)</span></td>
+        <td>物理 23</td><td>CLK 时钟</td>
+    </tr>
+    <tr>
+        <td><span class="pin">GPIO 8 (CE0)</span></td>
+        <td>物理 24</td><td>CS 片选</td>
+    </tr>
+    <tr>
+        <td><span class="pin">GPIO 13</span></td>
+        <td>物理 33</td><td>DC 数据/命令选择</td>
+    </tr>
+    <tr>
+        <td><span class="pin">GPIO 24</span></td>
+        <td>物理 18</td><td>RST 复位</td>
+    </tr>
+    <tr>
+        <td><span class="pin vcc">3.3V</span></td>
+        <td>物理 1</td><td>VCC 供电</td>
+    </tr>
+    <tr>
+        <td><span class="pin gnd">GND</span></td>
+        <td>物理 6</td><td>GND 接地</td>
+    </tr>
+    <tr>
+        <td rowspan="4">RGB LED</td>
+        <td rowspan="4">GPIO</td>
+        <td><span class="pin">GPIO 27</span></td>
+        <td>物理 13</td><td>红色（串联 330Ω 限流电阻）</td>
+    </tr>
+    <tr>
+        <td><span class="pin">GPIO 22</span></td>
+        <td>物理 15</td><td>绿色（串联 330Ω 限流电阻）</td>
+    </tr>
+    <tr>
+        <td><span class="pin">GPIO 5</span></td>
+        <td>物理 29</td><td>蓝色（串联 330Ω 限流电阻）</td>
+    </tr>
+    <tr>
+        <td><span class="pin vcc">3.3V</span></td>
+        <td>物理 1</td><td>公共阳极（最长的脚）</td>
+    </tr>
+    <tr>
+        <td>有源蜂鸣器</td>
+        <td>GPIO</td>
+        <td><span class="pin">GPIO 12</span></td>
+        <td>物理 32</td><td>正极 (+)</td>
+    </tr>
+    <tr>
+        <td>USB 摄像头</td>
+        <td>USB</td>
+        <td colspan="2">任意 USB 口</td>
+        <td>设备号 <code>/dev/video0</code></td>
+    </tr>
+    <tr>
+        <td>USB 音响</td>
+        <td>USB Audio</td>
+        <td colspan="2">任意 USB 口</td>
+        <td><code>aplay -l</code> 查看设备号</td>
+    </tr>
+    <tr>
+        <td rowspan="5">INMP441 ×2<br>I2S 麦克风</td>
+        <td rowspan="5">I2S</td>
+        <td><span class="pin">GPIO 18</span></td>
+        <td>物理 12</td><td>SCK / BCLK（两个麦克风共用）</td>
+    </tr>
+    <tr>
+        <td><span class="pin">GPIO 19</span></td>
+        <td>物理 35</td><td>WS / LRCK（两个麦克风共用）</td>
+    </tr>
+    <tr>
+        <td><span class="pin">GPIO 20</span></td>
+        <td>物理 38</td><td>SD / DIN（两个麦克风都接同一脚）</td>
+    </tr>
+    <tr>
+        <td><span class="pin vcc">3.3V</span></td>
+        <td>物理 1</td><td>VDD ×2</td>
+    </tr>
+    <tr>
+        <td><span class="pin gnd">GND</span></td>
+        <td>物理 6</td><td>GND ×2，L/R 脚接 GND 或 VDD 决定左右声道</td>
+    </tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h2>三、各模块详细接线</h2>
+
+<!-- ── DS18B20 ───────────────────────────────── -->
+<h3>1. DS18B20 温度传感器</h3>
+<div class="card">
+    <div class="card-title">🔌 接线方式</div>
+    <table>
+        <tr><th>DS18B20 引脚</th><th>接树莓派</th><th>说明</th></tr>
+        <tr><td>VCC（红/左脚）</td><td><span class="pin vcc">3.3V</span>（物理1）</td><td>供电，也可接 5V</td></tr>
+        <tr><td>GND（黑/右脚）</td><td><span class="pin gnd">GND</span>（物理6）</td><td>接地</td></tr>
+        <tr><td>DQ（黄/中间脚）</td><td><span class="pin">GPIO 4</span>（物理7）</td><td>数据线，<strong>必须</strong>接 4.7kΩ 上拉电阻到 3.3V</td></tr>
+    </table>
+    <div class="warn">
+        ⚠ <strong>必须接 4.7kΩ 上拉电阻</strong>：从 DQ 线拉到 3.3V，不接读不到数据。面向平面（有字的一面）引脚从左到右是 GND、DQ、VCC。
+    </div>
+    <pre># 开启 1-Wire（只需一次）
+sudo nano /boot/config.txt
+# 在末尾加入：
+dtoverlay=w1-gpio
+
+# 重启后检查
+ls /sys/bus/w1/devices/
+# 应该看到 28-xxxxxxxxxxxx 的文件夹</pre>
+</div>
+
+<!-- ── MCP3008 ADC ─────────────────────────────── -->
+<h3>MCP3008 ADC 模块（光照 + 气体传感器共用）</h3>
+<div class="card">
+    <div class="card-title">🔌 接线方式（SPI 总线）</div>
+    <table>
+        <tr><th>MCP3008 引脚</th><th>接树莓派</th><th>说明</th></tr>
+        <tr><td>VDD</td><td><span class="pin vcc">3.3V</span>（物理1）</td><td>数字供电</td></tr>
+        <tr><td>VREF</td><td><span class="pin vcc">3.3V</span>（物理1）</td><td>参考电压（决定 ADC 量程）</td></tr>
+        <tr><td>AGND</td><td><span class="pin gnd">GND</span>（物理6）</td><td>模拟地</td></tr>
+        <tr><td>DGND</td><td><span class="pin gnd">GND</span>（物理6）</td><td>数字地</td></tr>
+        <tr><td>CLK</td><td><span class="pin">GPIO 11 (SCLK)</span>（物理23）</td><td>SPI 时钟</td></tr>
+        <tr><td>DOUT</td><td><span class="pin">GPIO 9 (MISO)</span>（物理21）</td><td>数据输出（ADC → 树莓派）</td></tr>
+        <tr><td>DIN</td><td><span class="pin">GPIO 10 (MOSI)</span>（物理19）</td><td>数据输入（树莓派 → ADC）</td></tr>
+        <tr><td>CS/SHDN</td><td><span class="pin">GPIO 7 (CE1)</span>（物理26）</td><td>片选（CE1，与 OLED 共享 SPI0 总线）</td></tr>
+        <tr><td>CH0</td><td>MQ-135 气体传感器 SIG</td><td>通道 0 → 气体浓度</td></tr>
+        <tr><td>CH1</td><td>光照传感器 SIG</td><td>通道 1 → 光照强度</td></tr>
+    </table>
+    <div class="tip">
+        💡 MCP3008 是 8 通道 10 位 ADC，通过 SPI 接口通信，片选用 CE1 (GPIO 7)。本项目使用 CH0 接气体传感器、CH1 接光照传感器。3.3V 参考电压下分辨率约 3.2mV/级。与 OLED 共享 SPI0 总线，靠不同片选区分。
+    </div>
+</div>
+
+<!-- ── MQ-135 气体传感器 ───────────────────────── -->
+<h3>MQ-135 气体传感器</h3>
+<div class="card">
+    <div class="card-title">🔌 接线方式（模拟输出）</div>
+    <table>
+        <tr><th>MQ-135 引脚</th><th>接树莓派</th><th>说明</th></tr>
+        <tr><td>VCC</td><td><span class="pin vcc">5V</span>（物理2）</td><td>供电（需 5V，加热丝需要电流）</td></tr>
+        <tr><td>GND</td><td><span class="pin gnd">GND</span>（物理6）</td><td>接地</td></tr>
+        <tr><td>AOUT</td><td>MCP3008 CH0</td><td>模拟输出（气体浓度 → 电压）</td></tr>
+        <tr><td>DOUT</td><td>不接</td><td>数字输出（本项目不用，使用模拟量）</td></tr>
+    </table>
+    <div class="warn">
+        ⚠ MQ-135 需要预热 24~48 小时才能输出稳定数据。首次使用请先通电预热至少 2 分钟再读取。
+    </div>
+</div>
+
+<!-- ── DHT11 ─────────────────────────────────── -->
+<h3>2. DHT11 温湿度传感器</h3>
+<div class="card">
+    <div class="card-title">🔌 接线方式</div>
+    <table>
+        <tr><th>DHT11 引脚</th><th>接树莓派</th><th>说明</th></tr>
+        <tr><td>VCC（+ / 左脚）</td><td><span class="pin vcc">3.3V</span>（物理1）</td><td>供电</td></tr>
+        <tr><td>DATA（中间脚）</td><td><span class="pin">GPIO 17</span>（物理11）</td><td>数据线，<strong>必须</strong>接 10kΩ 上拉电阻到 3.3V</td></tr>
+        <tr><td>GND（- / 右脚）</td><td><span class="pin gnd">GND</span>（物理6）</td><td>接地</td></tr>
+    </table>
+    <div class="warn">
+        ⚠ DHT11 读取间隔不能小于 2 秒，否则容易读取失败。面向有孔的一面，引脚从左到右是 VCC、DATA、GND（有的模块是4脚，中间两个是DATA，只接一个）。
+    </div>
+</div>
+
+<!-- ── 光照传感器 ─────────────────────────────── -->
+<h3>3. 光照传感器（模拟模块）</h3>
+<div class="card">
+    <div class="card-title">🔌 接线方式（模拟输出，需 ADC）</div>
+    <table>
+        <tr><th>光照传感器引脚</th><th>接树莓派</th><th>说明</th></tr>
+        <tr><td>VCC</td><td><span class="pin vcc">3.3V</span>（物理1）</td><td>供电</td></tr>
+        <tr><td>GND</td><td><span class="pin gnd">GND</span>（物理6）</td><td>接地</td></tr>
+        <tr><td>SIG</td><td>MCP3008 CH1</td><td>模拟信号输出，需通过 ADC 转换后才能被树莓派读取</td></tr>
+    </table>
+    <div class="warn">
+        ⚠ <strong>树莓派没有模拟输入引脚</strong>，光照传感器的 SIG 输出必须先经过 MCP3008 ADC 模块转换为数字信号，再通过 SPI 传给树莓派。MCP3008 的接线见下方 ADC 说明。
+    </div>
+    <div class="tip">
+        💡 你的光照模块只有 3 个引脚（VCC、GND、SIG），是模拟输出型。SIG 输出的电压随光照强度线性变化：光照越强，电压越高。如果你希望直接获取 lux 值，可以考虑换成 I2C 数字光照模块 BH1750（GY-302），它有 5 个引脚（VCC、GND、SDA、SCL、ADDR），直接输出 lux，无需 ADC。
+    </div>
+</div>
+
+<!-- ── SSD1306 OLED ───────────────────────────── -->
+<h3>4. SSD1306 OLED 显示屏（0.96 寸）</h3>
+<div class="card">
+    <div class="card-title">🔌 接线方式（SPI 模式，与 MCP3008 共享 SPI0 总线）</div>
+    <table>
+        <tr><th>SSD1306 引脚</th><th>接树莓派</th><th>说明</th></tr>
+        <tr><td>VCC</td><td><span class="pin vcc">3.3V</span>（物理1）</td><td>供电（有的模块支持 5V）</td></tr>
+        <tr><td>GND</td><td><span class="pin gnd">GND</span>（物理6）</td><td>接地</td></tr>
+        <tr><td>DIN</td><td><span class="pin">GPIO 10</span>（物理19）</td><td>SPI 数据输入（MOSI，与 MCP3008 共用）</td></tr>
+        <tr><td>CLK</td><td><span class="pin">GPIO 11</span>（物理23）</td><td>SPI 时钟（SCLK，与 MCP3008 共用）</td></tr>
+        <tr><td>CS</td><td><span class="pin">GPIO 8</span>（物理24）</td><td>片选（CE0）</td></tr>
+        <tr><td>DC</td><td><span class="pin">GPIO 13</span>（物理33）</td><td>数据/命令选择（高=数据，低=命令）</td></tr>
+        <tr><td>RST</td><td><span class="pin">GPIO 24</span>（物理18）</td><td>复位（拉低复位，正常工作时拉高）</td></tr>
+    </table>
+    <div class="tip">
+        💡 OLED 与 MCP3008 共享 SPI0 总线（MOSI/MISO/SCLK），靠不同片选引脚区分：OLED 用 CE0 (GPIO 8)，MCP3008 用 CE1 (GPIO 7)。同一时刻只能有一个设备在通信，代码中需注意切换。
+    </div>
+</div>
+
+<!-- ── RGB LED ────────────────────────────────── -->
+<h3>5. RGB LED（共阳极）</h3>
+<div class="card">
+    <div class="card-title">🔌 接线方式</div>
+    <table>
+        <tr><th>LED 引脚</th><th>接树莓派</th><th>说明</th></tr>
+        <tr><td><span class="led-wire led-r"></span>R 红</td><td><span class="pin">GPIO 27</span>（物理13）串联 330Ω</td><td>红色通道</td></tr>
+        <tr><td><span class="led-wire led-g"></span>G 绿</td><td><span class="pin">GPIO 22</span>（物理15）串联 330Ω</td><td>绿色通道</td></tr>
+        <tr><td><span class="led-wire led-b"></span>B 蓝</td><td><span class="pin">GPIO 5</span>（物理29）串联 330Ω</td><td>蓝色通道</td></tr>
+        <tr><td>最长脚 / VCC</td><td><span class="pin vcc">3.3V</span>（物理1）</td><td>公共阳极</td></tr>
+    </table>
+    <div class="warn">
+        ⚠ <strong>每个颜色必须串联一个 330Ω 限流电阻</strong>，否则通电瞬间电流过大会烧坏 LED。长脚是公共脚，共阳极接 <span class="pin vcc">3.3V</span>。注意：共阳极的代码逻辑与共阴极相反 — GPIO 输出 HIGH = 灭，GPIO 输出 LOW = 亮，PWM 占空比需要反转。
+    </div>
+</div>
+
+<!-- ── 蜂鸣器 ────────────────────────────────── -->
+<h3>6. 有源蜂鸣器</h3>
+<div class="card">
+    <div class="card-title">🔌 接线方式</div>
+    <table>
+        <tr><th>蜂鸣器引脚</th><th>接树莓派</th><th>说明</th></tr>
+        <tr><td>正极 (+) / 红线</td><td><span class="pin">GPIO 12</span>（物理32）</td><td>信号输入</td></tr>
+        <tr><td>负极 (-) / 黑线</td><td><span class="pin gnd">GND</span>（物理6）</td><td>接地</td></tr>
+    </table>
+    <div class="tip">
+        💡 <strong>有源蜂鸣器</strong>给高电平就响，给低电平就停；<strong>无源蜂鸣器</strong>需要 PWM 方波才能发出不同频率的声音。如果买的蜂鸣器模块有两个引脚，通常是已经内置了驱动电路。
+    </div>
+</div>
+
+<!-- ── USB 摄像头 ──────────────────────────────── -->
+<h3>7. USB 摄像头</h3>
+<div class="card">
+    <div class="card-title">🔌 接线方式</div>
+    <p>直接插到树莓派的任意 USB 口即可，系统自动识别为 <code>/dev/video0</code></p>
+    <pre># 检查是否识别
+ls /dev/video*</pre>
+</div>
+
+<!-- ── USB 音响 ────────────────────────────────── -->
+<h3>8. USB 音响</h3>
+<div class="card">
+    <div class="card-title">🔌 接线方式</div>
+    <p>直接插到树莓派的任意 USB 口</p>
+    <pre># 检查音频设备
+aplay -l
+# 找到 USB Audio 设备，记住卡号（如 card 1）
+
+# 设置默认声卡（如果需要）
+sudo nano /etc/asound.conf
+# 加入：
+# defaults.pcm.card 1
+# defaults.ctl.card 1</pre>
+</div>
+
+<!-- ── INMP441 麦克风 ──────────────────────────── -->
+<h3>9. INMP441 I2S 麦克风（×2 个）</h3>
+<div class="card">
+    <div class="card-title">🔌 接线方式（立体声双麦）</div>
+    <table>
+        <tr><th>INMP441 引脚</th><th>接树莓派</th><th>说明</th></tr>
+        <tr><td>VDD</td><td><span class="pin vcc">3.3V</span>（物理1）</td><td>供电（两个都接）</td></tr>
+        <tr><td>GND</td><td><span class="pin gnd">GND</span>（物理6）</td><td>接地（两个都接）</td></tr>
+        <tr><td>SCK (BCLK)</td><td><span class="pin">GPIO 18</span>（物理12）</td><td>位时钟（两个共用）</td></tr>
+        <tr><td>WS (LRCK)</td><td><span class="pin">GPIO 19</span>（物理35）</td><td>字选择 / 左右声道时钟（两个共用）</td></tr>
+        <tr><td>SD (DIN)</td><td><span class="pin">GPIO 20</span>（物理38）</td><td>数据输出（两个都接 GPIO 20）</td></tr>
+        <tr><td>L/R</td><td>第一个接 <span class="pin gnd">GND</span>，第二个接 <span class="pin vcc">3.3V</span></td><td>L/R 接 GND = 左声道输出，接 VCC = 右声道输出</td></tr>
+    </table>
+    <div class="warn">
+        ⚠ <strong>L/R 引脚是关键</strong>：一个麦克风接 GND（左声道），另一个接 3.3V（右声道），这样树莓派才能区分两个麦克风的数据。
+    </div>
+    <pre># 启用 I2S（只需一次）
+sudo nano /boot/config.txt
+# 在末尾加入：
+dtoverlay=i2s-mmic
+
+# 重启后检查录音设备
+arecord -l
+# 应该看到 I2S 设备</pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h2>四、树莓派物理引脚图</h2>
+
+<div class="card">
+    <pre>┌─────────────────────────────────────────────────┐
+│                    Raspberry Pi 4B                │
+│                  （USB 口朝下，面向你）             │
+│                                                   │
+│  物理1  3.3V  ████  5V       ← VCC 给各传感器供电  │
+│  物理7  GPIO4 ████  GPIO14   ← DS18B20 DQ        │
+│  物理11 GPIO17 ████ GPIO18   ← DHT11 / INMP441 SCK│
+│  物理13 GPIO27 ████  GND     ← RGB LED 红           │
+│  物理15 GPIO22 ████ GPIO23   ← RGB LED 绿           │
+│  物理18 GPIO24 ████  GND     ← OLED RST            │
+│  物理19 GPIO10 ████  GND     ← SPI MOSI (OLED DIN + MCP3008 DIN)
+│  物理21 GPIO9  ████  GND     ← SPI MISO (MCP3008 DOUT)
+│  物理23 GPIO11 ████  GND     ← SPI SCLK (OLED CLK + MCP3008 CLK)
+│  物理24 GPIO8  ████  GND     ← OLED CS (CE0)       │
+│  物理26 GPIO7  ████  GND     ← MCP3008 CS (CE1)    │
+│  物理29 GPIO5  ████  GND     ← RGB LED 蓝           │
+│  物理32 GPIO12 ████  GND     ← 蜂鸣器               │
+│  物理33 GPIO13 ████  GND     ← OLED DC              │
+│  物理35 GPIO19 ████ GPIO26   ← INMP441 WS (×2共用)  │
+│  物理38 GPIO20 ████  GND     ← INMP441 SD (×2共用)  │
+│                                                   │
+│  USB口 ×4: 插摄像头 + 音响                           │
+│  SPI0 总线: OLED (CE0) + MCP3008 (CE1) 共用总线      │
+│  ★ 所有 GPIO 无复用，每个引脚仅接一个模块             │
+└─────────────────────────────────────────────────┘
+
+⚠ 注意：GPIO 18 已留给 INMP441 SCK，蜂鸣器已改到 GPIO 12（物理32）。
+  两个 INMP441 共用 GPIO 19/20 是 I2S 标准接法，左右声道分时输出不冲突。</pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h2>五、GPIO 分配确认</h2>
+
+<div class="card">
+    <div class="card-title">✅ GPIO 引脚分配（无冲突）</div>
+    <table>
+        <tr><th>BCM 引脚</th><th>物理引脚</th><th>分配模块</th><th>功能</th></tr>
+        <tr><td>GPIO 4</td><td>7</td><td>DS18B20</td><td>1-Wire DQ</td></tr>
+        <tr><td>GPIO 5</td><td>29</td><td>RGB LED</td><td>蓝色通道</td></tr>
+        <tr><td>GPIO 7</td><td>26</td><td>MCP3008 ADC</td><td>SPI CE1 (片选)</td></tr>
+        <tr><td>GPIO 8</td><td>24</td><td>SSD1306 OLED</td><td>SPI CE0 (片选)</td></tr>
+        <tr><td>GPIO 9</td><td>21</td><td>MCP3008 ADC</td><td>SPI MISO (数据输出)</td></tr>
+        <tr><td>GPIO 10</td><td>19</td><td>OLED + MCP3008</td><td>SPI MOSI (共享总线)</td></tr>
+        <tr><td>GPIO 11</td><td>23</td><td>OLED + MCP3008</td><td>SPI SCLK (共享总线)</td></tr>
+        <tr><td>GPIO 12</td><td>32</td><td>有源蜂鸣器</td><td>信号输入</td></tr>
+        <tr><td>GPIO 13</td><td>33</td><td>SSD1306 OLED</td><td>DC 数据/命令选择</td></tr>
+        <tr><td>GPIO 17</td><td>11</td><td>DHT11</td><td>DATA 数据线</td></tr>
+        <tr><td>GPIO 18</td><td>12</td><td>INMP441 ×2</td><td>I2S BCLK (位时钟)</td></tr>
+        <tr><td>GPIO 19</td><td>35</td><td>INMP441 ×2</td><td>I2S LRCK (字选择)</td></tr>
+        <tr><td>GPIO 20</td><td>38</td><td>INMP441 ×2</td><td>I2S DIN (数据)</td></tr>
+        <tr><td>GPIO 22</td><td>15</td><td>RGB LED</td><td>绿色通道</td></tr>
+        <tr><td>GPIO 24</td><td>18</td><td>SSD1306 OLED</td><td>RST 复位</td></tr>
+        <tr><td>GPIO 27</td><td>13</td><td>RGB LED</td><td>红色通道</td></tr>
+    </table>
+    <div class="tip">
+        💡 共使用 <strong>18 个 GPIO</strong>（含 SPI 共享总线 2个、I2S 3个、1-Wire 1个、普通 GPIO 5个、SPI 控制 5个、SPI 片选 2个）。GPIO 2/3 原 I2C 引脚已释放。OLED 与 MCP3008 共享 SPI0 总线（MOSI/MISO/SCLK），靠不同片选（CE0/CE1）区分设备。每个 GPIO 仅连接一个模块，无复用冲突。
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h2>六、所需材料清单</h2>
+
+<table>
+    <tr><th>序号</th><th>模块</th><th>数量</th><th>购买关键词</th><th>参考价格</th></tr>
+    <tr><td>1</td><td>DS18B20 防水温度传感器</td><td>1</td><td>DS18B20 防水 探头</td><td>3~5 元</td></tr>
+    <tr><td>2</td><td>DHT11 温湿度传感器模块</td><td>1</td><td>DHT11 模块 带板</td><td>5~8 元</td></tr>
+    <tr><td>3</td><td>光照传感器模块（模拟）</td><td>1</td><td>光敏传感器模块 3线</td><td>2~4 元</td></tr>
+    <tr><td>4</td><td>MCP3008 ADC 模块</td><td>1</td><td>MCP3008-I/P DIP-16</td><td>3~5 元</td></tr>
+    <tr><td>5</td><td>MQ-135 气体传感器模块</td><td>1</td><td>MQ-135 空气质量</td><td>5~8 元</td></tr>
+    <tr><td>6</td><td>SSD1306 OLED 0.96寸（SPI）</td><td>1</td><td>SSD1306 0.96 OLED SPI 7针</td><td>8~12 元</td></tr>
+    <tr><td>7</td><td>RGB LED（共阳极）</td><td>1</td><td>RGB LED 共阳 5mm</td><td>0.5 元</td></tr>
+    <tr><td>8</td><td>330Ω 电阻</td><td>3</td><td>330Ω 1/4W 电阻</td><td>0.1 元/个</td></tr>
+    <tr><td>9</td><td>4.7kΩ 电阻</td><td>1</td><td>4.7kΩ 1/4W 电阻（DS18B20 上拉用）</td><td>0.1 元</td></tr>
+    <tr><td>10</td><td>10kΩ 电阻</td><td>1</td><td>10kΩ 1/4W 电阻（DHT11上拉）</td><td>0.1 元</td></tr>
+    <tr><td>11</td><td>有源蜂鸣器模块</td><td>1</td><td>有源蜂鸣器模块 5V</td><td>1~2 元</td></tr>
+    <tr><td>12</td><td>USB 摄像头</td><td>1</td><td>免驱 USB 摄像头 720P</td><td>20~30 元</td></tr>
+    <tr><td>13</td><td>USB 小音响</td><td>1</td><td>USB 迷你音响</td><td>10~20 元</td></tr>
+    <tr><td>14</td><td>INMP441 I2S 麦克风模块</td><td>2</td><td>INMP441 I2S MEMS</td><td>5~8 元/个</td></tr>
+    <tr><td>15</td><td>面包板 + 杜邦线</td><td>1套</td><td>830孔面包板 + 杜邦线</td><td>10~15 元</td></tr>
+</table>
+<p style="font-size:13px;color:#a89e95;margin-top:8px">总计约 90~140 元（不含树莓派）</p>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h2>七、注意事项</h2>
+
+<div class="card">
+    <ol>
+        <li><strong>接线前断电</strong>：所有接线操作必须在树莓派断电状态下进行</li>
+        <li><strong>先检查短路</strong>：通电前检查所有接线，确认没有短路（特别是 3.3V 和 GND）</li>
+        <li><strong>SPI 总线共享</strong>：SSD1306 OLED 和 MCP3008 ADC 共享 SPI0 总线（MOSI/MISO/SCLK），OLED 用 CE0 (GPIO 8)，MCP3008 用 CE1 (GPIO 7)，同一时刻只能有一个设备通信</li>
+        <li><strong>1-Wire 上拉必须有</strong>：DS18B20 的 4.7kΩ 上拉电阻是必须的，不能省略</li>
+        <li><strong>LED 必须限流</strong>：RGB LED 每个颜色串联 330Ω 电阻，不能直接接 GPIO</li>
+        <li><strong>RGB LED 共阳极</strong>：公共脚接 3.3V，GPIO 输出 LOW = 亮、HIGH = 灭，代码中 PWM 占空比需要反转</li>
+        <li><strong>光照传感器需 ADC</strong>：模拟光照传感器的 SIG 引脚必须接 MCP3008 ADC，不能直接接树莓派 GPIO</li>
+        <li><strong>DHT11 等待时间</strong>：两次读取间隔至少 2 秒</li>
+        <li><strong>GPIO 编号</strong>：代码里用的是 BCM 编号（GPIO 4/17/27...），不是物理引脚编号</li>
+    </ol>
+</div>
+
+<p style="margin-top:40px;color:#a89e95;font-size:13px;text-align:center;">— 智居物语 · 硬件接线说明 —</p>
+
+</body>
+</html>

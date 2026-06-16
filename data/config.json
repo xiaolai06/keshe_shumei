@@ -1,0 +1,17 @@
+{
+  "llm": {
+    "provider": "custom",
+    "api_key": "sk-ea58f39e5f33446fad990524bbb3ab3e",
+    "base_url": "https://api.deepseek.com",
+    "model": "deepseek-v4-flash",
+    "temperature": 0.7,
+    "max_tokens": 512
+  },
+  "stt": {
+    "provider": "custom",
+    "api_key": "sk-qusqlvgqtmtugtouycgkjugcagzmcfhyygvrofqydwwrmjqs",
+    "base_url": "https://api.siliconflow.cn/v1",
+    "model": "FunAudioLLM/SenseVoiceSmall",
+    "language": "zh"
+  }
+}

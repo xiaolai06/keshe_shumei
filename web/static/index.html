@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智居物语 — 智能家居助手</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════
+     HEADER (unified nav bar)
+     ═══════════════════════════════════════════════ -->
+<header class="header">
+    <div class="header-left">
+        <div class="header-avatar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+        </div>
+        <span class="header-name">智居物语</span>
+    </div>
+    <div class="header-center">
+        <span class="header-time" id="headerTime">
+            <svg class="header-time-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span id="headerTimeText"></span>
+        </span>
+        <span class="header-divider-v"></span>
+        <span class="header-greeting" id="headerGreeting">愿你今天被温柔以待</span>
+    </div>
+    <div class="header-right">
+        <nav class="header-tabs" role="tablist" aria-label="功能导航">
+            <button class="tab-btn active" role="tab" aria-selected="true" aria-controls="panel-chat" data-tab="chat">
+                <span class="tab-icon">🤖</span>
+                <span class="tab-label">AI 对话</span>
+            </button>
+            <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-camera" data-tab="camera">
+                <span class="tab-icon">📹</span>
+                <span class="tab-label">摄像头</span>
+            </button>
+            <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-sensors" data-tab="sensors">
+                <span class="tab-icon">📈</span>
+                <span class="tab-label">传感器</span>
+            </button>
+            <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-memory" data-tab="memory">
+                <span class="tab-icon">💾</span>
+                <span class="tab-label">记忆</span>
+            </button>
+            <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-reminders" data-tab="reminders">
+                <span class="tab-icon">📅</span>
+                <span class="tab-label">提醒</span>
+            </button>
+        </nav>
+        <div class="header-divider"></div>
+        <button class="btn-icon" aria-label="通知" id="btnNotify">
+            <span>🔔</span>
+            <span class="notify-dot"></span>
+        </button>
+        <button class="btn-icon" aria-label="设置" id="btnSettings" onclick="document.getElementById('settingsModal').style.display='flex'">⚙️</button>
+    </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════
+     TAB PANELS
+     ═══════════════════════════════════════════════ -->
+<main class="main-content">
+
+<!-- ─────────────────────────────────────────────
+     TAB 1: AI 对话
+     ───────────────────────────────────────────── -->
+<section class="tab-panel active" id="panel-chat" role="tabpanel">
+    <div class="chat-layout">
+        <!-- 左侧: 对话区 -->
+        <div class="chat-main">
+            <div class="chat-messages" id="chatMessages">
+                <!-- 桌宠消息 -->
+                <div class="msg msg-pet">
+                    <div class="msg-avatar">🐾</div>
+                    <div class="msg-body">
+                        <div class="msg-bubble">你好呀~ 今天天气不错！温度 25°C 很舒服呢~</div>
+                        <div class="msg-meta">14:30</div>
+                    </div>
+                </div>
+                <!-- 用户消息 -->
+                <div class="msg msg-user">
+                    <div class="msg-body">
+                        <div class="msg-bubble">帮我看看桌上有什么</div>
+                        <div class="msg-meta">14:31</div>
+                    </div>
+                </div>
+                <!-- 桌宠回复 -->
+                <div class="msg msg-pet">
+                    <div class="msg-avatar">🐾</div>
+                    <div class="msg-body">
+                        <div class="msg-bubble">我看了一下，桌上有一杯咖啡和一本《深入理解计算机系统》呢~ 你今天在学什么呀？</div>
+                        <div class="msg-meta">14:31</div>
+                    </div>
+                </div>
+                <!-- 流式回复示例 -->
+                <div class="msg msg-pet">
+                    <div class="msg-avatar">🐾</div>
+                    <div class="msg-body">
+                        <div class="msg-bubble">
+                            <span class="typing-dots">
+                                <span></span><span></span><span></span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 输入栏 -->
+            <div class="chat-input-bar">
+                <button class="btn-icon" aria-label="语音输入" id="btnVoice">🎤</button>
+                <input type="text" class="chat-input" placeholder="和智居物语聊天..." id="chatInput">
+                <button class="btn btn-primary btn-sm" id="btnSend">发送</button>
+            </div>
+        </div>
+        <!-- 右侧: 会话历史 -->
+        <aside class="chat-history" id="chatHistory">
+            <div class="chat-history-header">
+                <h3>📋 会话记录</h3>
+                <div class="search-box">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" placeholder="搜索历史..." class="search-input">
+                </div>
+            </div>
+            <div class="chat-history-list">
+                <div class="history-date">2026-06-10</div>
+                <div class="history-item active">
+                    <div class="history-preview">你好呀~ 今天天气不错...</div>
+                    <div class="history-count">3 条消息</div>
+                </div>
+                <div class="history-date">2026-06-09</div>
+                <div class="history-item">
+                    <div class="history-preview">讲个关于树莓派的笑话</div>
+                    <div class="history-count">8 条消息</div>
+                </div>
+                <div class="history-item">
+                    <div class="history-preview">帮我看看桌上有什么</div>
+                    <div class="history-count">5 条消息</div>
+                </div>
+                <div class="history-date">2026-06-08</div>
+                <div class="history-item">
+                    <div class="history-preview">今天天气怎么样</div>
+                    <div class="history-count">4 条消息</div>
+                </div>
+            </div>
+        </aside>
+    </div>
+</section>
+
+<!-- ─────────────────────────────────────────────
+     TAB 2: 摄像头
+     ───────────────────────────────────────────── -->
+<section class="tab-panel" id="panel-camera" role="tabpanel">
+    <div class="camera-layout">
+        <!-- 左侧: 视频流 -->
+        <div class="camera-main">
+            <div class="camera-feed" id="cameraFeed">
+                <div class="camera-placeholder">
+                    <span class="camera-placeholder-icon">📷</span>
+                    <span>摄像头未连接</span>
+                    <button class="btn btn-secondary btn-sm" style="margin-top:12px">连接摄像头</button>
+                </div>
+            </div>
+            <div class="camera-controls">
+                <button class="btn btn-primary btn-sm">拍照分析</button>
+                <button class="btn btn-secondary btn-sm">暂停</button>
+                <button class="btn btn-secondary btn-sm">保存快照</button>
+                <button class="btn btn-ghost btn-sm">场景播报</button>
+            </div>
+        </div>
+        <!-- 右侧: 分析 + 快照 -->
+        <aside class="camera-sidebar">
+            <div class="camera-sidebar-section">
+                <h3 class="camera-sidebar-title">最近分析</h3>
+                <div class="analysis-list">
+                    <div class="analysis-item">
+                        <div class="analysis-time">14:30</div>
+                        <div class="analysis-content">
+                            <div class="analysis-title">检测到人脸</div>
+                            <div class="analysis-detail">
+                                <span class="badge badge-green">置信度 92%</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="analysis-item">
+                        <div class="analysis-time">13:15</div>
+                        <div class="analysis-content">
+                            <div class="analysis-title">桌面: 咖啡杯 + 书籍</div>
+                            <div class="analysis-detail">
+                                <span class="badge badge-orange">场景识别</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="analysis-item">
+                        <div class="analysis-time">10:00</div>
+                        <div class="analysis-content">
+                            <div class="analysis-title">环境: 明亮室内</div>
+                            <div class="analysis-detail">
+                                <span class="badge badge-cyan">环境分析</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="camera-sidebar-section">
+                <h3 class="camera-sidebar-title">快照</h3>
+                <div class="snapshot-grid">
+                    <div class="snapshot-thumb">
+                        <span class="snapshot-placeholder">🖼️</span>
+                        <span class="snapshot-time">14:30</span>
+                    </div>
+                    <div class="snapshot-thumb">
+                        <span class="snapshot-placeholder">🖼️</span>
+                        <span class="snapshot-time">13:15</span>
+                    </div>
+                    <div class="snapshot-thumb">
+                        <span class="snapshot-placeholder">🖼️</span>
+                        <span class="snapshot-time">10:00</span>
+                    </div>
+                    <div class="snapshot-thumb">
+                        <span class="snapshot-placeholder">🖼️</span>
+                        <span class="snapshot-time">09:30</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+</section>
+
+<!-- ─────────────────────────────────────────────
+     TAB 3: 传感器
+     ───────────────────────────────────────────── -->
+<section class="tab-panel" id="panel-sensors" role="tabpanel">
+    <!-- 实时数值卡片 -->
+    <div class="sensor-cards">
+        <div class="sensor-card">
+            <div class="sensor-card-icon" style="background:var(--orange-s);color:var(--orange)">🌡️</div>
+            <div class="sensor-card-info">
+                <div class="sensor-card-label">温度</div>
+                <div class="sensor-card-value" id="sensorTemp">25.3°C</div>
+            </div>
+        </div>
+        <div class="sensor-card">
+            <div class="sensor-card-icon" style="background:var(--cyan-s);color:var(--cyan)">💧</div>
+            <div class="sensor-card-info">
+                <div class="sensor-card-label">湿度</div>
+                <div class="sensor-card-value" id="sensorHumi">62% RH</div>
+            </div>
+        </div>
+        <div class="sensor-card">
+            <div class="sensor-card-icon" style="background:var(--yellow-s);color:var(--yellow)">☀️</div>
+            <div class="sensor-card-info">
+                <div class="sensor-card-label">光照</div>
+                <div class="sensor-card-value" id="sensorLight">340 lx</div>
+            </div>
+        </div>
+        <div class="sensor-card">
+            <div class="sensor-card-icon" style="background:var(--green-s);color:var(--green)">😊</div>
+            <div class="sensor-card-info">
+                <div class="sensor-card-label">情绪</div>
+                <div class="sensor-card-value" id="sensorMood">开心</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 温度趋势图 -->
+    <div class="chart-section">
+        <div class="chart-header">
+            <h3>🌡️ 温度趋势</h3>
+            <div class="range-btn-group">
+                <button class="range-btn active" data-range="1h">1h</button>
+                <button class="range-btn" data-range="6h">6h</button>
+                <button class="range-btn" data-range="24h">24h</button>
+                <button class="range-btn" data-range="7d">7d</button>
+            </div>
+        </div>
+        <div class="chart-container">
+            <canvas id="tempChart"></canvas>
+        </div>
+    </div>
+
+    <!-- 湿度 + 情绪 双栏 -->
+    <div class="chart-duo">
+        <div class="chart-section">
+            <div class="chart-header">
+                <h3>💧 湿度趋势</h3>
+            </div>
+            <div class="chart-container chart-container-sm">
+                <canvas id="humiChart"></canvas>
+            </div>
+        </div>
+        <div class="chart-section">
+            <div class="chart-header">
+                <h3>🎭 情绪时间线</h3>
+            </div>
+            <div class="chart-container chart-container-sm">
+                <canvas id="moodChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- 导出按钮 -->
+    <div class="chart-footer">
+        <button class="btn btn-secondary btn-sm">📥 导出 CSV</button>
+        <button class="btn btn-secondary btn-sm">📸 导出 PNG</button>
+    </div>
+</section>
+
+<!-- ─────────────────────────────────────────────
+     TAB 4: 记忆回顾
+     ───────────────────────────────────────────── -->
+<section class="tab-panel" id="panel-memory" role="tabpanel">
+    <!-- 工具栏 -->
+    <div class="memory-toolbar">
+        <div class="search-box search-box-lg">
+            <span class="search-icon">🔍</span>
+            <input type="text" placeholder="语义搜索记忆..." class="search-input">
+        </div>
+        <select class="select-styled">
+            <option>筛选: 全部</option>
+            <option>事件</option>
+            <option>偏好</option>
+            <option>反思</option>
+        </select>
+        <select class="select-styled">
+            <option>排序: 时间</option>
+            <option>重要性</option>
+            <option>相关度</option>
+        </select>
+    </div>
+
+    <!-- 双栏布局 -->
+    <div class="memory-layout">
+        <!-- 长期记忆 -->
+        <div class="memory-section">
+            <h3 class="memory-section-title">📌 长期记忆</h3>
+            <div class="memory-card">
+                <div class="memory-card-icon">❤️</div>
+                <div class="memory-card-body">
+                    <div class="memory-card-content">主人喜欢喝美式咖啡</div>
+                    <div class="memory-card-meta">
+                        <span class="importance-bar"><span class="importance-fill" style="width:80%"></span></span>
+                        <span class="importance-label">8/10</span>
+                        <span class="memory-date">6月1日</span>
+                    </div>
+                </div>
+            </div>
+            <div class="memory-card">
+                <div class="memory-card-icon">📖</div>
+                <div class="memory-card-body">
+                    <div class="memory-card-content">主人在读《深入理解计算机系统》</div>
+                    <div class="memory-card-meta">
+                        <span class="importance-bar"><span class="importance-fill" style="width:60%"></span></span>
+                        <span class="importance-label">6/10</span>
+                        <span class="memory-date">6月5日</span>
+                    </div>
+                </div>
+            </div>
+            <div class="memory-card">
+                <div class="memory-card-icon">🎉</div>
+                <div class="memory-card-body">
+                    <div class="memory-card-content">第一次识别出主人的脸</div>
+                    <div class="memory-card-meta">
+                        <span class="importance-bar"><span class="importance-fill" style="width:90%"></span></span>
+                        <span class="importance-label">9/10</span>
+                        <span class="memory-date">5月28日</span>
+                    </div>
+                </div>
+            </div>
+            <div class="memory-card">
+                <div class="memory-card-icon">💬</div>
+                <div class="memory-card-body">
+                    <div class="memory-card-content">主人喜欢听关于树莓派的笑话</div>
+                    <div class="memory-card-meta">
+                        <span class="importance-bar"><span class="importance-fill" style="width:50%"></span></span>
+                        <span class="importance-label">5/10</span>
+                        <span class="memory-date">6月9日</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 短期摘要 -->
+        <div class="memory-section">
+            <h3 class="memory-section-title">📝 短期摘要</h3>
+            <div class="memory-summary-card">
+                <div class="summary-date">📅 2026-06-10</div>
+                <div class="summary-stats">交互 3 次 · 温度 24~26°C</div>
+                <div class="summary-topics">话题: 日常问候</div>
+            </div>
+            <div class="memory-summary-card">
+                <div class="summary-date">📅 2026-06-09</div>
+                <div class="summary-stats">交互 12 次 · 温度 23~26°C</div>
+                <div class="summary-topics">话题: 笑话、日常、学习</div>
+            </div>
+            <div class="memory-summary-card">
+                <div class="summary-date">📅 2026-06-08</div>
+                <div class="summary-stats">交互 8 次 · 温度 22~25°C</div>
+                <div class="summary-topics">话题: 天气、摄像头</div>
+            </div>
+            <div class="memory-summary-card">
+                <div class="summary-date">📅 2026-06-07</div>
+                <div class="summary-stats">交互 15 次 · 温度 21~24°C</div>
+                <div class="summary-topics">话题: 首次对话、功能探索</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ─────────────────────────────────────────────
+     TAB 5: 提醒管理
+     ───────────────────────────────────────────── -->
+<section class="tab-panel" id="panel-reminders" role="tabpanel">
+    <div class="reminder-header">
+        <h3>提醒管理</h3>
+        <button class="btn btn-primary btn-sm" id="btnAddReminder">+ 添加提醒</button>
+    </div>
+
+    <!-- 添加提醒表单（默认隐藏） -->
+    <div class="reminder-form" id="reminderForm" style="display:none">
+        <div class="reminder-form-title">新建提醒</div>
+        <div class="reminder-form-row">
+            <select class="select-styled">
+                <option>⏰ 定时</option>
+                <option>🔁 周期</option>
+                <option>🌡️ 条件</option>
+                <option>📷 拍照</option>
+            </select>
+            <input type="time" class="input-styled" value="15:00">
+        </div>
+        <input type="text" class="input-styled" placeholder="提醒内容...">
+        <div class="reminder-form-actions">
+            <button class="btn btn-ghost btn-sm" id="btnCancelReminder">取消</button>
+            <button class="btn btn-primary btn-sm">保存提醒</button>
+        </div>
+    </div>
+
+    <!-- 提醒列表 -->
+    <div class="reminder-list">
+        <div class="reminder-item">
+            <span class="reminder-icon">⏰</span>
+            <div class="reminder-body">
+                <div class="reminder-time">15:00</div>
+                <div class="reminder-content">喝水</div>
+            </div>
+            <div class="reminder-actions">
+                <button class="btn-icon-sm" aria-label="编辑">✏️</button>
+                <button class="btn-icon-sm btn-icon-danger" aria-label="删除">✕</button>
+            </div>
+        </div>
+        <div class="reminder-item">
+            <span class="reminder-icon">🔁</span>
+            <div class="reminder-body">
+                <div class="reminder-time">每天 08:00</div>
+                <div class="reminder-content">早安问候</div>
+            </div>
+            <div class="reminder-actions">
+                <button class="btn-icon-sm" aria-label="编辑">✏️</button>
+                <button class="btn-icon-sm btn-icon-danger" aria-label="删除">✕</button>
+            </div>
+        </div>
+        <div class="reminder-item">
+            <span class="reminder-icon">🌡️</span>
+            <div class="reminder-body">
+                <div class="reminder-time">条件: &gt;30°C</div>
+                <div class="reminder-content">温度过高，注意防暑</div>
+            </div>
+            <div class="reminder-actions">
+                <button class="btn-icon-sm" aria-label="编辑">✏️</button>
+                <button class="btn-icon-sm btn-icon-danger" aria-label="删除">✕</button>
+            </div>
+        </div>
+        <div class="reminder-item">
+            <span class="reminder-icon">📷</span>
+            <div class="reminder-body">
+                <div class="reminder-time">18:00</div>
+                <div class="reminder-content">拍照记录一天结束</div>
+            </div>
+            <div class="reminder-actions">
+                <button class="btn-icon-sm" aria-label="编辑">✏️</button>
+                <button class="btn-icon-sm btn-icon-danger" aria-label="删除">✕</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 已过期 -->
+    <div class="reminder-expired-section">
+        <div class="reminder-expired-title">已过期</div>
+        <div class="reminder-item reminder-item-expired">
+            <span class="reminder-icon">✅</span>
+            <div class="reminder-body">
+                <div class="reminder-time">昨天 10:00</div>
+                <div class="reminder-content"><s>喝水</s></div>
+            </div>
+            <div class="reminder-actions">
+                <button class="btn-icon-sm btn-icon-danger" aria-label="删除">✕</button>
+            </div>
+        </div>
+    </div>
+</section>
+
+</main>
+
+<!-- ═══════════════════════════════════════════════
+     TOAST CONTAINER
+     ═══════════════════════════════════════════════ -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ═══════════════════════════════════════════════
+     SETTINGS MODAL
+     ═══════════════════════════════════════════════ -->
+<div class="modal-overlay" id="settingsModal" style="display:none">
+    <div class="modal">
+        <div class="modal-header">
+            <h2>⚙️ 大模型配置</h2>
+            <button class="btn-icon modal-close" id="btnCloseSettings" aria-label="关闭">✕</button>
+        </div>
+        <div class="modal-body">
+            <!-- 提供商选择 -->
+            <div class="form-group">
+                <label class="form-label">API 提供商</label>
+                <select class="select-styled form-input" id="llmProvider">
+                    <option value="deepseek">DeepSeek</option>
+                    <option value="openai">OpenAI</option>
+                    <option value="moonshot">Moonshot (Kimi)</option>
+                    <option value="zhipu">智谱 (GLM)</option>
+                    <option value="qwen">通义千问</option>
+                    <option value="custom">自定义</option>
+                </select>
+            </div>
+            <!-- Base URL -->
+            <div class="form-group">
+                <label class="form-label">API Base URL</label>
+                <input type="text" class="form-input" id="llmBaseUrl" placeholder="https://api.deepseek.com/v1">
+            </div>
+            <!-- API Key -->
+            <div class="form-group">
+                <label class="form-label">API Key</label>
+                <div class="input-with-btn">
+                    <input type="password" class="form-input" id="llmApiKey" placeholder="sk-...">
+                    <button class="btn btn-ghost btn-sm" id="btnToggleKey" title="显示/隐藏">👁️</button>
+                </div>
+            </div>
+            <!-- 模型选择 -->
+            <div class="form-group">
+                <label class="form-label">模型</label>
+                <div class="input-with-btn">
+                    <select class="select-styled form-input" id="llmModel">
+                        <option value="">请先获取模型列表</option>
+                    </select>
+                    <button class="btn btn-secondary btn-sm" id="btnFetchModels">获取模型</button>
+                </div>
+            </div>
+            <!-- Temperature -->
+            <div class="form-group">
+                <label class="form-label">Temperature: <span id="tempValue">0.7</span></label>
+                <input type="range" class="form-range" id="llmTemperature" min="0" max="2" step="0.1" value="0.7">
+                <div class="range-labels"><span>精确 0</span><span>创意 2</span></div>
+            </div>
+            <!-- Max Tokens -->
+            <div class="form-group">
+                <label class="form-label">Max Tokens</label>
+                <input type="number" class="form-input" id="llmMaxTokens" value="512" min="64" max="8192" step="64">
+            </div>
+            <!-- 测试连接 -->
+            <div class="form-group">
+                <div class="connection-test">
+                    <button class="btn btn-secondary" id="btnTestConnection">🔗 测试连接</button>
+                    <div class="connection-status" id="connectionStatus">
+                        <span class="status-dot status-unknown"></span>
+                        <span class="status-text">未测试</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── 分隔线 ── -->
+            <div style="border-top:1px solid var(--border);margin:8px 0"></div>
+            <div style="font-weight:600;font-size:14px;color:var(--text);margin-bottom:4px">🎤 语音识别 (STT)</div>
+
+            <!-- STT 提供商 -->
+            <div class="form-group">
+                <label class="form-label">STT 服务</label>
+                <select class="select-styled form-input" id="sttProvider">
+                    <option value="openai">OpenAI Whisper API</option>
+                    <option value="custom">自定义</option>
+                </select>
+            </div>
+            <!-- STT Base URL -->
+            <div class="form-group">
+                <label class="form-label">STT Base URL</label>
+                <input type="text" class="form-input" id="sttBaseUrl" placeholder="https://api.openai.com/v1">
+            </div>
+            <!-- STT API Key -->
+            <div class="form-group">
+                <label class="form-label">STT API Key（可与 LLM 共用）</label>
+                <div class="input-with-btn">
+                    <input type="password" class="form-input" id="sttApiKey" placeholder="sk-...">
+                    <button class="btn btn-ghost btn-sm" id="btnToggleSttKey" title="显示/隐藏">👁️</button>
+                </div>
+            </div>
+            <!-- STT Model -->
+            <div class="form-group">
+                <label class="form-label">STT 模型</label>
+                <input type="text" class="form-input" id="sttModel" value="whisper-1" placeholder="whisper-1">
+            </div>
+            <!-- STT 语言 -->
+            <div class="form-group">
+                <label class="form-label">识别语言</label>
+                <select class="select-styled form-input" id="sttLanguage">
+                    <option value="zh">中文</option>
+                    <option value="en">英文</option>
+                    <option value="ja">日文</option>
+                    <option value="">自动检测</option>
+                </select>
+            </div>
+            <!-- STT 测试 -->
+            <div class="form-group">
+                <div class="connection-test">
+                    <button class="btn btn-secondary" id="btnTestStt">🔗 测试 STT</button>
+                    <div class="connection-status" id="sttStatus">
+                        <span class="status-dot status-unknown"></span>
+                        <span class="status-text">未测试</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" id="btnCancelSettings">取消</button>
+            <button class="btn btn-primary" id="btnSaveSettings">💾 保存配置</button>
+        </div>
+    </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
